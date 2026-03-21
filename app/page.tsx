@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
+import Image from "next/image"
 import PixelScene from "@/components/pixel-scene"
 
 export default function Home() {
@@ -17,8 +18,30 @@ export default function Home() {
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0 }}
             transition={{ duration: 0.5 }}
-            className="flex items-center justify-center"
+            className="flex flex-col items-center justify-center gap-6"
           >
+            {/* Logo */}
+            <motion.div
+              initial={{ opacity: 0, y: -12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+              className="flex flex-col items-center"
+            >
+              <Image
+                src="/logo.png"
+                alt="Moneda pixeleada"
+                width={110}
+                height={110}
+                style={{ imageRendering: "pixelated" }}
+                className="drop-shadow-[0_0_25px_rgba(255,215,0,0.35)]"
+              />
+
+              <h1 className="mt-3 text-white font-black text-2xl md:text-4xl tracking-wide">
+                Sigue la moneda
+              </h1>
+            </motion.div>
+
+            {/* Botón */}
             <button
               onClick={() => setShowScene(true)}
               className="group relative px-10 py-5 bg-white text-black font-bold text-lg md:text-xl rounded-2xl shadow-[0_0_40px_rgba(255,255,255,0.15)] transition-all duration-300 hover:shadow-[0_0_60px_rgba(255,255,255,0.3)] hover:scale-105 active:scale-95"
