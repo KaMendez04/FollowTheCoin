@@ -14,7 +14,7 @@ const _geist = Geist({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: 'Pixel Friends',
+  title: 'Follow The Coin',
   description: 'Interactive pixel art characters greeting you!',
   generator: 'v0.app',
   icons: {
