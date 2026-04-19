@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import Image from "next/image"
-import PixelScene from "@/components/pixel-scene"
+import PixelScene from "@/src/components/game/pixel-scene"
 
 export default function Home() {
   const [showScene, setShowScene] = useState(false)

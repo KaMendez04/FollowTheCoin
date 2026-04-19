@@ -1,12 +1,7 @@
 "use client"
 
 import { motion } from "framer-motion"
-
-interface PixelCharacterProps {
-  type: string
-  color: string
-  delay: number
-}
+import { PixelCharacterProps } from "@/types"
 
 export default function PixelCharacter({ type, delay }: PixelCharacterProps) {
   return (
@@ -33,11 +28,11 @@ export default function PixelCharacter({ type, delay }: PixelCharacterProps) {
           ease: "easeInOut",
         }}
       >
-        {type === "hero" && <MarioCharacter />}
-        {type === "blob" && <KirbyCharacter />}
-        {type === "creature" && <PikachuCharacter />}
-        {type === "robot" && <RobotCharacter />}
-        {type === "ghost" && <LuigiCharacter />}
+        {type === "Mario" && <MarioCharacter />}
+        {type === "Kirby" && <KirbyCharacter />}
+        {type === "Pikachu" && <PikachuCharacter />}
+        {type === "Robot" && <RobotCharacter />}
+        {type === "Luigi" && <LuigiCharacter />}
       </motion.div>
     </motion.div>
   )

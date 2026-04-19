@@ -3,55 +3,22 @@
 import { motion, AnimatePresence, TargetAndTransition } from "framer-motion"
 import { useEffect, useMemo, useRef, useState } from "react"
 import PixelCharacter from "./pixel-character"
+import { AvatarType, Burst, CoinPosition, GameStatus, ScoreEntry, Character } from "@/types"
+import EnhancedGameScene from "./enhanced-game-scene"
+import { CHARACTERS, PARTICLE_COLORS, GAME_CONFIG, AVATAR_INFO } from "@/constants"
+import { storage } from "@/utils"
 
-const characters = [
-  { id: 1, type: "hero", color: "#e74c3c", delay: 0.2 },
-  { id: 2, type: "blob", color: "#ff69b4", delay: 0.4 },
-  { id: 3, type: "creature", color: "#f1c40f", delay: 0.6 },
-  { id: 4, type: "robot", color: "#3498db", delay: 0.8 },
-  { id: 5, type: "ghost", color: "#9b59b6", delay: 1.0 },
-]
-
-const particleColors = ["#e74c3c", "#f1c40f", "#3498db", "#9b59b6", "#2ecc71", "#ffffff"]
-
-const SCORES_KEY = "pixel_scene_top_scores"
-const PLAYER_NAME_KEY = "pixel_scene_player_name"
-const TARGET_SCORE = 25
-const GAME_TIME = 20
-
-type Burst = {
-  id: number
-  x: number
-  y: number
-}
-
-type CoinPosition = {
-  x: number
-  y: number
-}
-
-type GameStatus = "idle" | "playing" | "won" | "lost"
-
-type ScoreEntry = {
-  id: string
-  name: string
-  score: number
-  timeLeft: number
-  won: boolean
-  playedAt: number
-}
 
 function sortScores(scores: ScoreEntry[]) {
   return [...scores].sort((a, b) => {
-    if (a.won !== b.won) return a.won ? -1 : 1
     if (a.score !== b.score) return b.score - a.score
-    if (a.timeLeft !== b.timeLeft) return b.timeLeft - a.timeLeft
     return b.playedAt - a.playedAt
   })
 }
 
 export default function PixelScene() {
   const containerRef = useRef<HTMLDivElement>(null)
+  const [showEnhancedGame, setShowEnhancedGame] = useState(false)
 
   const [bursts, setBursts] = useState<Burst[]>([])
   const [mouse, setMouse] = useState({ x: 0, y: 0, active: false })
@@ -59,12 +26,12 @@ export default function PixelScene() {
   const [clickCount, setClickCount] = useState(0)
 
   const [playerName, setPlayerName] = useState("")
+  const [selectedAvatar, setSelectedAvatar] = useState<AvatarType>("Mario")
   const [bestScores, setBestScores] = useState<ScoreEntry[]>([])
 
   const [gameStatus, setGameStatus] = useState<GameStatus>("idle")
   const [score, setScore] = useState(0)
-  const [targetScore, setTargetScore] = useState(TARGET_SCORE)
-  const [timeLeft, setTimeLeft] = useState(GAME_TIME)
+  const [timeLeft, setTimeLeft] = useState<number>(GAME_CONFIG.GAME_TIME)
   const [coinPosition, setCoinPosition] = useState<CoinPosition>({ x: 50, y: 56 })
 
   const sparklePositions = useMemo(
@@ -84,7 +51,7 @@ export default function PixelScene() {
       [...Array(24)].map((_, i) => ({
         id: i,
         left: Math.random() * 100,
-        color: particleColors[Math.floor(Math.random() * particleColors.length)],
+        color: PARTICLE_COLORS[Math.floor(Math.random() * PARTICLE_COLORS.length)],
         duration: 4 + Math.random() * 4,
         delay: 1 + Math.random() * 4,
         size: Math.random() > 0.5 ? "w-1 h-1 md:w-2 md:h-2" : "w-1.5 h-1.5",
@@ -97,7 +64,7 @@ export default function PixelScene() {
       [...Array(8)].map((_, i) => ({
         id: i,
         size: i % 3 === 0 ? 8 : 6,
-        color: particleColors[i % particleColors.length],
+        color: PARTICLE_COLORS[i % PARTICLE_COLORS.length],
         offsetX: (i - 4) * 7,
         offsetY: (i % 2 === 0 ? -1 : 1) * (4 + i),
         duration: 0.22 + i * 0.03,
@@ -106,8 +73,9 @@ export default function PixelScene() {
   )
 
   useEffect(() => {
-    const savedScores = localStorage.getItem(SCORES_KEY)
-    const savedPlayerName = localStorage.getItem(PLAYER_NAME_KEY)
+    const savedScores = storage.getItem(GAME_CONFIG.SCORES_KEY)
+    const savedPlayerName = storage.getItem(GAME_CONFIG.PLAYER_NAME_KEY)
+    const savedAvatar = storage.getItem(GAME_CONFIG.PLAYER_AVATAR_KEY) as AvatarType | null
 
     if (savedScores) {
       try {
@@ -120,11 +88,19 @@ export default function PixelScene() {
     if (savedPlayerName) {
       setPlayerName(savedPlayerName)
     }
+
+    if (savedAvatar && AVATAR_INFO[savedAvatar]) {
+      setSelectedAvatar(savedAvatar)
+    }
   }, [])
 
   useEffect(() => {
-    localStorage.setItem(PLAYER_NAME_KEY, playerName)
+    storage.setItem(GAME_CONFIG.PLAYER_NAME_KEY, playerName)
   }, [playerName])
+
+  useEffect(() => {
+    storage.setItem(GAME_CONFIG.PLAYER_AVATAR_KEY, selectedAvatar)
+  }, [selectedAvatar])
 
   useEffect(() => {
     if (gameStatus !== "playing") return
@@ -137,17 +113,12 @@ export default function PixelScene() {
     return () => window.clearTimeout(timer)
   }, [timeLeft, gameStatus])
 
-  useEffect(() => {
-    if (gameStatus === "playing" && score >= targetScore) {
-      finishGame(true)
-    }
-  }, [score, gameStatus, targetScore])
 
   useEffect(() => {
-    if (gameStatus === "playing" && timeLeft <= 0 && score < targetScore) {
-      finishGame(false)
+    if (gameStatus === "playing" && timeLeft <= 0) {
+      finishGame()
     }
-  }, [timeLeft, score, gameStatus, targetScore])
+  }, [timeLeft, score, gameStatus])
 
   function playRetroBeep(freq = 520, duration = 0.06, type: OscillatorType = "square") {
     try {
@@ -201,38 +172,30 @@ export default function PixelScene() {
   function saveScore(entry: ScoreEntry) {
     const updated = sortScores([entry, ...bestScores]).slice(0, 3)
     setBestScores(updated)
-    localStorage.setItem(SCORES_KEY, JSON.stringify(updated))
+    storage.setJSON(GAME_CONFIG.SCORES_KEY, updated)
   }
 
-  function finishGame(won: boolean) {
-    setGameStatus(won ? "won" : "lost")
+  function finishGame() {
+    setGameStatus("finished")
 
     const entry: ScoreEntry = {
       id: `${Date.now()}-${Math.random()}`,
       name: playerName.trim() || "Invitado",
+      avatar: selectedAvatar,
       score,
-      timeLeft,
-      won,
       playedAt: Date.now(),
     }
 
     saveScore(entry)
 
-    if (won) {
-      setTargetScore((prev) => prev + 5)
-      playRetroBeep(700, 0.08)
-      window.setTimeout(() => playRetroBeep(900, 0.08), 80)
-      window.setTimeout(() => playRetroBeep(1200, 0.12), 160)
-    } else {
-      playRetroBeep(340, 0.08)
-      window.setTimeout(() => playRetroBeep(260, 0.1), 90)
-    }
+    playRetroBeep(340, 0.08)
+    window.setTimeout(() => playRetroBeep(260, 0.1), 90)
   }
 
   function startGame(e: React.MouseEvent<HTMLButtonElement>) {
     e.stopPropagation()
     setScore(0)
-    setTimeLeft(GAME_TIME)
+    setTimeLeft(GAME_CONFIG.GAME_TIME)
     setCoinPosition(randomCoinPosition())
     setGameStatus("playing")
     playStartSound()
@@ -284,16 +247,46 @@ export default function PixelScene() {
     })
   }
 
+  // Si está en el juego mejorado, mostrar esa pantalla
+  if (showEnhancedGame) {
+    return (
+      <EnhancedGameScene
+        playerName={playerName}
+        selectedAvatar={selectedAvatar}
+        onBack={() => setShowEnhancedGame(false)}
+      />
+    )
+  }
+
   return (
     <div
       ref={containerRef}
       onClick={handleSceneClick}
       onMouseMove={handleMouseMove}
       onMouseLeave={() => setMouse((prev) => ({ ...prev, active: false }))}
-      className="relative min-h-screen overflow-hidden bg-[#030326] px-4 py-6"
+      className="relative min-h-screen overflow-hidden bg-[#050505] px-4 py-6"
+      style={{ imageRendering: "pixelated" }}
     >
-      <div className="absolute inset-0 z-0 bg-[radial-gradient(circle_at_center,rgba(44,56,120,0.18),transparent_55%)]" />
-      <div className="absolute bottom-0 left-0 right-0 z-0 h-32 bg-gradient-to-t from-[#1a1a2e] to-transparent" />
+      {/* Pixel grid pattern overlay */}
+      <div 
+        className="absolute inset-0 z-0 opacity-20 pointer-events-none"
+        style={{
+          backgroundImage: `
+            linear-gradient(to right, #1a1a1a 1px, transparent 1px),
+            linear-gradient(to bottom, #1a1a1a 1px, transparent 1px)
+          `,
+          backgroundSize: '4px 4px'
+        }}
+      />
+      {/* CRT scanline effect */}
+      <div 
+        className="absolute inset-0 z-0 pointer-events-none opacity-10"
+        style={{
+          background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.3) 2px, rgba(0,0,0,0.3) 4px)'
+        }}
+      />
+      {/* Subtle vignette */}
+      <div className="absolute inset-0 z-0 bg-[radial-gradient(circle_at_center,transparent_30%,rgba(0,0,0,0.6)_100%)]" />
 
       <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
         {floatingParticles.map((particle) => (
@@ -333,30 +326,6 @@ export default function PixelScene() {
         ))}
       </div>
 
-      <AnimatePresence>
-        {mouse.active && (
-          <div className="absolute inset-0 z-[1] pointer-events-none">
-            {trailParticles.map((particle) => (
-              <motion.div
-                key={particle.id}
-                className="absolute"
-                animate={{
-                  x: mouse.x + particle.offsetX,
-                  y: mouse.y + particle.offsetY,
-                  opacity: [0.25, 0.9, 0.25],
-                  scale: [1, 1.1, 1],
-                }}
-                transition={{ duration: particle.duration, ease: "easeOut" }}
-                style={{
-                  width: particle.size,
-                  height: particle.size,
-                  backgroundColor: particle.color,
-                }}
-              />
-            ))}
-          </div>
-        )}
-      </AnimatePresence>
 
       <div className="absolute inset-0 z-[1] pointer-events-none">
         {bursts.map((burst) => (
@@ -378,7 +347,7 @@ export default function PixelScene() {
               const angle = (i / 14) * Math.PI * 2
               const distance = 28 + (i % 3) * 10
               const size = i % 2 === 0 ? 6 : 8
-              const color = particleColors[i % particleColors.length]
+              const color = PARTICLE_COLORS[i % PARTICLE_COLORS.length]
 
               return (
                 <motion.div
@@ -414,7 +383,7 @@ export default function PixelScene() {
             exit={{ opacity: 0, scale: 0.8 }}
             className="absolute left-1/2 top-6 z-20 -translate-x-1/2"
           >
-            <div className="pixel-text text-xl text-yellow-300 md:text-3xl">1-UP!</div>
+            <div className="pixel-text text-xl text-yellow-300 md:text-3xl">1-UP!-KM</div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -422,6 +391,9 @@ export default function PixelScene() {
       <div className="relative z-10 mx-auto flex min-h-[calc(100vh-3rem)] w-full max-w-6xl flex-col items-center justify-center gap-6 lg:grid lg:grid-cols-[1fr_280px] lg:items-center lg:gap-8">
         <div className="flex w-full flex-col items-center">
           <ArcadeMessage />
+          <Instructions />
+
+          <AvatarSelector selected={selectedAvatar} onSelect={setSelectedAvatar} characters={CHARACTERS} />
 
           <div className="mb-4 flex w-full max-w-md flex-col items-center gap-3">
             <div className="flex w-full flex-col gap-3 sm:flex-row">
@@ -435,50 +407,43 @@ export default function PixelScene() {
               <motion.button
                 whileHover={{ scale: 1.04, y: -1 }}
                 whileTap={{ scale: 0.97 }}
-                onClick={startGame}
-                className="h-11 min-w-[120px] border-b-4 border-[#ca8a04] bg-[#facc15] px-5 pixel-text text-sm text-[#1f2937] shadow-[0_6px_0_0_rgba(0,0,0,0.28)]"
+                onClick={() => setShowEnhancedGame(true)}
+                disabled={!playerName.trim()}
+                className="h-11 min-w-[120px] border-b-4 border-[#ca8a04] bg-[#facc15] px-5 pixel-text text-sm text-[#1f2937] shadow-[0_6px_0_0_rgba(0,0,0,0.28)] disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 START
               </motion.button>
             </div>
 
-            <div className="flex flex-wrap items-center justify-center gap-2 pixel-text text-[11px] text-white md:text-xs">
-              <HudPill label={`META ${targetScore}`} />
+            <div className="flex flex-wrap items-center justify-center gap-2 text-[11px] text-white md:text-xs font-semibold tracking-wide">
               <HudPill label={`SCORE ${score}`} />
               <HudPill label={`TIME ${timeLeft}`} />
             </div>
 
             <AnimatePresence mode="wait">
-              {gameStatus === "won" && (
+              {gameStatus === "finished" && (
                 <motion.div
-                  key="won"
+                  key="finished"
                   initial={{ opacity: 0, y: -6 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0 }}
-                  className="pixel-text text-sm text-green-300"
+                  className="text-sm text-yellow-400 font-bold tracking-wide"
                 >
-                  ¡GANASTE!
-                </motion.div>
-              )}
-
-              {gameStatus === "lost" && (
-                <motion.div
-                  key="lost"
-                  initial={{ opacity: 0, y: -6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0 }}
-                  className="pixel-text text-sm text-red-300"
-                >
-                  GAME OVER
+                  ¡TIEMPO! Puntuación: {score}
                 </motion.div>
               )}
             </AnimatePresence>
           </div>
 
-          <div className="relative flex min-h-[300px] w-full items-end justify-center">
+          <div className="relative flex min-h-[180px] w-full items-end justify-center">
             <div className="relative z-10 flex flex-wrap items-end justify-center gap-4 px-4 md:gap-8 lg:gap-12">
-              {characters.map((char) => (
-                <CharacterHover key={char.id} type={char.type}>
+              {CHARACTERS.map((char) => (
+                <CharacterHover
+                  key={char.id}
+                  type={char.type}
+                  isSelected={selectedAvatar === char.type}
+                  onClick={() => setSelectedAvatar(char.type as AvatarType)}
+                >
                   <PixelCharacter type={char.type} color={char.color} delay={char.delay} />
                 </CharacterHover>
               ))}
@@ -527,16 +492,40 @@ export default function PixelScene() {
 
 function HudPill({ label }: { label: string }) {
   return (
-    <div className="border border-white/15 bg-white/10 px-3 py-1">
+    <div className="border border-white/20 bg-white/10 px-3 py-1 rounded">
       {label}
     </div>
   )
 }
 
 function RankingCard({ scores }: { scores: ScoreEntry[] }) {
+  const clearHistory = () => {
+    storage.removeItem(GAME_CONFIG.SCORES_KEY)
+    window.location.reload()
+  }
+
   return (
     <div className="border border-white/15 bg-white/10 p-4 text-white backdrop-blur-[2px]">
-      <div className="pixel-text mb-3 text-center text-sm md:text-base">TOP 3</div>
+          <div className="mb-3 flex items-center justify-between">
+            <div className="text-sm md:text-base font-bold tracking-wide text-yellow-300">TOP 3</div>
+            {scores.length > 0 && (
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={clearHistory}
+                className="w-8 h-8 border border-red-500/50 bg-red-500/20 text-red-300 rounded hover:bg-red-500/30 transition-colors flex items-center justify-center"
+                title="Borrar historial"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </motion.button>
+            )}
+          </div>
+
+          {scores.length > 0 && (
+            <div className="mb-2 text-center text-xs text-white/50">Avatar del jugador se muestra en cada entrada</div>
+          )}
 
       {scores.length === 0 ? (
         <p className="text-center text-sm text-white/65">
@@ -550,17 +539,60 @@ function RankingCard({ scores }: { scores: ScoreEntry[] }) {
               className="flex items-center justify-between border border-white/10 bg-black/10 px-3 py-2 text-xs md:text-sm"
             >
               <div className="flex items-center gap-2">
-                <span className="pixel-text text-yellow-300">#{index + 1}</span>
-                <span className="max-w-[90px] truncate">{entry.name}</span>
+                <span className="text-yellow-300 font-bold">#{index + 1}</span>
+                <div
+                  className="w-6 h-6 rounded border border-white/30 overflow-hidden"
+                  title={AVATAR_INFO[entry.avatar]?.label || entry.avatar || "?"}
+                >
+                  {entry.avatar === "Kirby" ? (
+                    <img 
+                      src="/kirby.png" 
+                      alt="Kirby" 
+                      className="w-full h-full object-cover"
+                      style={{ imageRendering: "pixelated" }}
+                    />
+                  ) : entry.avatar === "Pikachu" ? (
+                    <img 
+                      src="/pikachu.png" 
+                      alt="Pikachu" 
+                      className="w-full h-full object-cover"
+                      style={{ imageRendering: "pixelated" }}
+                    />
+                  ) : entry.avatar === "Mario" ? (
+                    <img 
+                      src="/mario.png" 
+                      alt="Mario" 
+                      className="w-full h-full object-cover"
+                      style={{ imageRendering: "pixelated" }}
+                    />
+                  ) : entry.avatar === "Luigi" ? (
+                    <img 
+                      src="/luigi.png" 
+                      alt="Luigi" 
+                      className="w-full h-full object-cover"
+                      style={{ imageRendering: "pixelated" }}
+                    />
+                  ) : entry.avatar === "Robot" ? (
+                    <img 
+                      src="/robot.png" 
+                      alt="Robot" 
+                      className="w-full h-full object-cover"
+                      style={{ imageRendering: "pixelated" }}
+                    />
+                  ) : (
+                    <div
+                      className="w-full h-full flex items-center justify-center text-xs"
+                      style={{ backgroundColor: AVATAR_INFO[entry.avatar as AvatarType]?.color || "#666" }}
+                    >
+                      {((entry.avatar as string) || "?")[0].toUpperCase()}
+                    </div>
+                  )}
+                </div>
+                <span className="max-w-[80px] truncate">{entry.name}</span>
               </div>
 
               <div className="flex items-center gap-2">
-                <span>{entry.score}</span>
-                <span className="text-white/55">|</span>
-                <span>{entry.timeLeft}s</span>
-                <span className={entry.won ? "text-green-300" : "text-red-300"}>
-                  {entry.won ? "WIN" : "LOSE"}
-                </span>
+                <span>{entry.score} pts</span>
               </div>
             </div>
           ))}
@@ -570,12 +602,105 @@ function RankingCard({ scores }: { scores: ScoreEntry[] }) {
   )
 }
 
+function AvatarSelector({
+  selected,
+  onSelect,
+  characters,
+}: {
+  selected: AvatarType
+  onSelect: (avatar: AvatarType) => void
+  characters: typeof CHARACTERS
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 1.3, duration: 0.4 }}
+      className="mb-3"
+    >
+      <p className="text-xs text-white/60 text-center mb-2 font-medium">Selecciona tu avatar</p>
+      <div className="flex items-center justify-center gap-2">
+        {characters.map((char: Character) => {
+          const avatarType = char.type as AvatarType
+          const isSelected = selected === avatarType
+          return (
+            <motion.button
+              key={char.id}
+              onClick={() => onSelect(avatarType)}
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.95 }}
+              className={`relative w-12 h-12 md:w-14 md:h-14 rounded-lg border-2 flex items-center justify-center transition-all overflow-hidden ${
+                isSelected
+                  ? "border-yellow-400 bg-white/20 shadow-[0_0_15px_rgba(250,204,21,0.3)]"
+                  : "border-white/20 bg-white/5 hover:border-white/40"
+              }`}
+              title={AVATAR_INFO[avatarType]?.label || char.type}
+            >
+              <div className="w-10 h-10 md:w-12 md:h-12 relative">
+                {char.type === "Kirby" ? (
+                  <img 
+                    src="/kirby.png" 
+                    alt="Kirby" 
+                    className="w-full h-full object-cover"
+                    style={{ imageRendering: "pixelated" }}
+                  />
+                ) : char.type === "Pikachu" ? (
+                  <img 
+                    src="/pikachu.png" 
+                    alt="Pikachu" 
+                    className="w-full h-full object-cover"
+                    style={{ imageRendering: "pixelated" }}
+                  />
+                ) : char.type === "Mario" ? (
+                  <img 
+                    src="/mario.png" 
+                    alt="Mario" 
+                    className="w-full h-full object-cover"
+                    style={{ imageRendering: "pixelated" }}
+                  />
+                ) : char.type === "Luigi" ? (
+                  <img 
+                    src="/luigi.png" 
+                    alt="Luigi" 
+                    className="w-full h-full object-cover"
+                    style={{ imageRendering: "pixelated" }}
+                  />
+                ) : char.type === "Robot" ? (
+                  <img 
+                    src="/robot.png" 
+                    alt="Robot" 
+                    className="w-full h-full object-cover"
+                    style={{ imageRendering: "pixelated" }}
+                  />
+                ) : (
+                  <PixelCharacter type={char.type} color={char.color} delay={0} />
+                )}
+              </div>
+              {isSelected && (
+                <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-yellow-400 rounded-full flex items-center justify-center border-2 border-black">
+                  <svg className="w-3 h-3 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+              )}
+            </motion.button>
+          )
+        })}
+      </div>
+    </motion.div>
+  )
+}
+
 function CharacterHover({
   type,
   children,
+  isSelected,
+  onClick,
 }: {
   type: string
   children: React.ReactNode
+  isSelected?: boolean
+  onClick?: () => void
 }) {
   const animations: Record<
     string,
@@ -612,14 +737,30 @@ function CharacterHover({
   }
 
   return (
-    <motion.div whileHover={config.whileHover} transition={config.transition}>
+    <motion.div
+      whileHover={config.whileHover}
+      transition={config.transition}
+      onClick={onClick}
+      className={`cursor-pointer relative ${isSelected ? "ring-2 ring-yellow-400 rounded-lg" : ""}`}
+    >
       {children}
+      {isSelected && (
+        <motion.div
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          className="absolute -top-2 -right-2 w-6 h-6 bg-yellow-400 rounded-full flex items-center justify-center border-2 border-black z-20"
+        >
+          <svg className="w-4 h-4 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+          </svg>
+        </motion.div>
+      )}
     </motion.div>
   )
 }
 
 function ArcadeMessage() {
-  const rows = ["HELLO", "WORLD"]
+  const rows = ["FOLLOW", "COIN"]
 
   return (
     <motion.div
@@ -639,6 +780,22 @@ function ArcadeMessage() {
           ))}
         </div>
       ))}
+    </motion.div>
+  )
+}
+
+function Instructions() {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 1.2, duration: 0.4 }}
+      className="mb-2 text-center"
+    >
+      <div className="text-xs text-white/80 md:text-sm font-medium tracking-wide">
+        <p className="mb-1">Clickea la moneda dorada para ganar puntos</p>
+        <p className="text-xs text-white/60">Consigue la mayor puntuación en 20 segundos</p>
+      </div>
     </motion.div>
   )
 }
