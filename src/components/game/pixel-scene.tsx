@@ -1,3 +1,5 @@
+"use client"
+
 import { motion, AnimatePresence, TargetAndTransition } from "framer-motion"
 import { useEffect, useMemo, useRef, useState, useCallback } from "react"
 import PixelCharacter from "./pixel-character"
@@ -7,11 +9,11 @@ import EnhancedMultiplayerScene from "./enhanced-multiplayer-scene"
 import MultiplayerRanking from "./multiplayer-ranking"
 import { CHARACTERS, PARTICLE_COLORS, GAME_CONFIG, AVATAR_INFO } from "@/constants"
 import { storage } from "@/utils"
+import { RoomPlayer, RoomState, TurnState, createRoom, joinRoomByCode, startRoomGame, startTurnBasedGame, leaveRoom } from "@/lib/supabase/room"
 import { subscribeToRoom } from "@/lib/supabase/realtime"
 import { saveRoomScore, getTopScores, type TopScoreEntry } from "@/lib/supabase/scores"
 import { getDeviceId } from "@/lib/game/device"
 import RoomLobby from "@/components/room-lobby"
-import { createRoom, joinRoomByCode, leaveRoom, RoomPlayer, RoomState, startTurnBasedGame, TurnState } from "@/src/lib/supabase/room"
 
 type PlayMode = "menu" | "solo" | "create-room" | "join-room" | "room-lobby"
 
@@ -257,7 +259,7 @@ export default function PixelScene() {
     if (!playerName.trim()) { setRoomError("Por favor ingresa tu nombre"); return }
     setRoomLoading(true); setRoomError("")
     try {
-      const result = await createRoom({ nickname: playerName.trim(), avatar: selectedAvatar, deviceId: getDeviceId(), maxPlayers: 2, selectedLevel: 1 })
+      const result = await createRoom({ nickname: playerName.trim(), avatar: selectedAvatar, deviceId: getDeviceId(), maxPlayers: 5, selectedLevel: 1 })
       setCurrentRoomCode(result.room.code); setCurrentRoomId(result.room.id)
       setRoomPlayers([result.player]); setRoomState(result.state); setPlayMode("room-lobby")
     } catch (e) { setRoomError(e instanceof Error ? e.message : "Error al crear la sala") }
@@ -279,13 +281,14 @@ export default function PixelScene() {
   async function handleStartGame(difficulty: "easy" | "medium" | "hard") {
     if (!currentRoomId) return
     setRoomLoading(true); setRoomError(""); setGameDifficulty(difficulty)
-    if (roomPlayers.length !== 2) {
-      setRoomError("La partida solo puede iniciar cuando hay exactamente 2 jugadores")
+    try {
+      await startTurnBasedGame(currentRoomId, difficulty)
+    } catch (e) {
+      setRoomError(e instanceof Error ? e.message : "Error al iniciar")
       setRoomLoading(false)
-      return
+    } finally {
+      setRoomLoading(false)
     }
-    try { await startTurnBasedGame(currentRoomId, difficulty) }
-    catch (e) { setRoomError(e instanceof Error ? e.message : "Error al iniciar"); setRoomLoading(false) }
   }
 
   async function handleLeaveRoom() {
@@ -302,10 +305,12 @@ async function handlePlayerFinish(score: number) {
   if (!currentRoomId) return
 
   try {
-    const { finishPlayerTurn, nextPlayerTurn } = await import("@/src/lib/supabase/room")
-    const currentPlayer = roomPlayers[currentPlayerIndex]
+    const { finishPlayerTurn, nextPlayerTurn } = await import("@/lib/supabase/room")
+    const activePlayerId = currentTurnState?.current_player_id
+    const currentPlayer = roomPlayers.find((player) => player.id === activePlayerId)
 
     if (!currentPlayer) return
+    if (currentPlayer.device_id !== getDeviceId()) return
 
     await finishPlayerTurn(currentRoomId, currentPlayer.id, score)
     await nextPlayerTurn(currentRoomId)
@@ -432,7 +437,19 @@ async function handlePlayerFinish(score: number) {
         ))}
       </div>
 
-      
+      {/* Pixel crosses ambient */}
+      <div className="absolute inset-0 z-0 pointer-events-none">
+        {[...Array(16)].map((_, i) => (
+          <div key={i} className="absolute opacity-10"
+            style={{ left: `${6 + (i * 6.1) % 90}%`, top: `${4 + (i * 7.3) % 88}%` }}>
+            <svg width="12" height="12" viewBox="0 0 12 12" style={{ imageRendering: "pixelated" }}>
+              <rect x="5" y="0" width="2" height="12" fill="#fff"/>
+              <rect x="0" y="5" width="12" height="2" fill="#fff"/>
+            </svg>
+          </div>
+        ))}
+      </div>
+
       {/* Click bursts */}
       <div className="absolute inset-0 z-[1] pointer-events-none">
         {bursts.map((burst) => (
@@ -629,6 +646,9 @@ async function handlePlayerFinish(score: number) {
     </div>
   )
 }
+
+// ── Sub-components ─────────────────────────────────────────────────────────────
+
 
 function AvatarSelector({ selected, onSelect, characters }: { selected: AvatarType, onSelect: (a: AvatarType) => void, characters: typeof CHARACTERS }) {
   const imgs: Record<string, string> = { Kirby: "/kirby.png", Pikachu: "/pikachu.png", Finn: "/fin.png", AmongUs: "/amongus.png", Robot: "/robot.png", Mage: "/mage.png" }

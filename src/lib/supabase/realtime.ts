@@ -1,5 +1,12 @@
 import { supabase } from "./client"
-import { GameRoom, getRoomByCode, getRoomPlayers, getRoomState, RoomPlayer, RoomState } from "./room"
+import {
+  GameRoom,
+  getRoomByCode,
+  getRoomPlayers,
+  getRoomState,
+  RoomPlayer,
+  RoomState,
+} from "./room"
 
 export type RoomSnapshot = {
   room: GameRoom | null
@@ -46,191 +53,172 @@ export function subscribeToRoom(
   const normalizedCode = roomCode.trim().toUpperCase()
 
   let isActive = true
-  let currentSnapshot: RoomSnapshot = {
-    room: null,
-    players: [],
-    state: null,
-  }
-  let latestRoomStateUpdatedAt = ""
+  let channel: ReturnType<typeof supabase.channel> | null = null
+  let reconnectTimer: number | null = null
+  let fallbackPollTimer: number | null = null
+  let refreshInFlight = false
+  let refreshQueued = false
+  let latestSnapshotKey = ""
 
-  const emitSnapshot = () => {
+  const emitError = (error: unknown) => {
     if (!isActive) return
-    callbacks.onSnapshot?.({
-      room: currentSnapshot.room,
-      players: currentSnapshot.players,
-      state: currentSnapshot.state,
-    })
+    callbacks.onError?.(
+      error instanceof Error ? error : new Error("No se pudo sincronizar la sala")
+    )
   }
 
-  const loadInitialSnapshot = async () => {
+  const makeSnapshotKey = (snapshot: RoomSnapshot) => {
+    const roomUpdated = snapshot.room?.status ?? "no-room"
+    const playersKey = snapshot.players
+      .map((player) => `${player.id}:${player.nickname}:${player.is_host ? 1 : 0}`)
+      .join("|")
+    const stateUpdated = snapshot.state?.updated_at ?? "no-state"
+
+    return `${roomUpdated}__${playersKey}__${stateUpdated}`
+  }
+
+  const refreshSnapshot = async () => {
+    if (!isActive) return
+
+    if (refreshInFlight) {
+      refreshQueued = true
+      return
+    }
+
+    refreshInFlight = true
+
     try {
       const snapshot = await buildRoomSnapshot(normalizedCode)
 
       if (!isActive) return
 
-      currentSnapshot = snapshot
-      latestRoomStateUpdatedAt = snapshot.state?.updated_at ?? ""
-      emitSnapshot()
+      const nextKey = makeSnapshotKey(snapshot)
+
+      if (nextKey !== latestSnapshotKey) {
+        latestSnapshotKey = nextKey
+        callbacks.onSnapshot?.(snapshot)
+      }
     } catch (error) {
-      callbacks.onError?.(
-        error instanceof Error
-          ? error
-          : new Error("No se pudo cargar la sala")
-      )
+      emitError(error)
+    } finally {
+      refreshInFlight = false
+
+      if (refreshQueued && isActive) {
+        refreshQueued = false
+        void refreshSnapshot()
+      }
     }
   }
 
-  void loadInitialSnapshot()
+  const clearReconnectTimer = () => {
+    if (reconnectTimer !== null) {
+      window.clearTimeout(reconnectTimer)
+      reconnectTimer = null
+    }
+  }
 
-  const channel = supabase
-    .channel(`room-sync:${normalizedCode}`)
+  const clearFallbackPoll = () => {
+    if (fallbackPollTimer !== null) {
+      window.clearInterval(fallbackPollTimer)
+      fallbackPollTimer = null
+    }
+  }
 
-    // cambios de la sala
-    .on(
-      "postgres_changes",
-      {
-        event: "*",
-        schema: "public",
-        table: "game_rooms",
-      },
-      async (payload: any) => {
+  const cleanupChannel = async () => {
+    if (!channel) return
+
+    const currentChannel = channel
+    channel = null
+
+    try {
+      await supabase.removeChannel(currentChannel)
+    } catch {
+      // no-op
+    }
+  }
+
+  const scheduleReconnect = () => {
+    if (!isActive || reconnectTimer !== null) return
+
+    reconnectTimer = window.setTimeout(async () => {
+      reconnectTimer = null
+
+      if (!isActive) return
+
+      await cleanupChannel()
+      createChannel()
+      void refreshSnapshot()
+    }, 1500)
+  }
+
+  const createChannel = () => {
+    if (!isActive) return
+
+    channel = supabase
+      .channel(`room-sync:${normalizedCode}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "game_rooms",
+        },
+        () => {
+          void refreshSnapshot()
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "room_players",
+        },
+        () => {
+          void refreshSnapshot()
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "room_state",
+        },
+        () => {
+          void refreshSnapshot()
+        }
+      )
+      .subscribe((status: string) => {
         if (!isActive) return
 
-        try {
-          const room = await getRoomByCode(normalizedCode)
-
-          if (!room) {
-            currentSnapshot = {
-              room: null,
-              players: [],
-              state: null,
-            }
-            emitSnapshot()
-            return
-          }
-
-          if (
-            currentSnapshot.room &&
-            currentSnapshot.room.id !== room.id
-          ) {
-            return
-          }
-
-          currentSnapshot = {
-            ...currentSnapshot,
-            room,
-          }
-
-          emitSnapshot()
-        } catch (error) {
-          callbacks.onError?.(
-            error instanceof Error
-              ? error
-              : new Error("No se pudo actualizar la sala")
-          )
+        if (status === "SUBSCRIBED") {
+          clearReconnectTimer()
+          void refreshSnapshot()
+          return
         }
-      }
-    )
 
-    // cambios de jugadores
-    .on(
-      "postgres_changes",
-      {
-        event: "*",
-        schema: "public",
-        table: "room_players",
-      },
-      async (payload: any) => {
-        if (!isActive) return
-
-        try {
-          const room = currentSnapshot.room ?? (await getRoomByCode(normalizedCode))
-          if (!room) return
-
-          const changedRoomId =
-            payload?.new?.room_id ?? payload?.old?.room_id
-
-          if (changedRoomId && changedRoomId !== room.id) return
-
-          const players = await getRoomPlayers(room.id)
-
-          currentSnapshot = {
-            ...currentSnapshot,
-            room,
-            players,
-          }
-
-          emitSnapshot()
-        } catch (error) {
-          callbacks.onError?.(
-            error instanceof Error
-              ? error
-              : new Error("No se pudieron actualizar los jugadores")
-          )
+        if (
+          status === "CHANNEL_ERROR" ||
+          status === "TIMED_OUT" ||
+          status === "CLOSED"
+        ) {
+          scheduleReconnect()
         }
-      }
-    )
+      })
+  }
 
-    // cambios del estado de juego
-    .on(
-      "postgres_changes",
-      {
-        event: "*",
-        schema: "public",
-        table: "room_state",
-      },
-      async (payload: any) => {
-        if (!isActive) return
+  createChannel()
+  void refreshSnapshot()
 
-        try {
-          const room = currentSnapshot.room ?? (await getRoomByCode(normalizedCode))
-          if (!room) return
-
-          const changedRoomId =
-            payload?.new?.room_id ?? payload?.old?.room_id
-
-          if (changedRoomId && changedRoomId !== room.id) return
-
-          const freshState = await getRoomState(room.id)
-
-          if (
-            latestRoomStateUpdatedAt &&
-            freshState?.updated_at &&
-            new Date(freshState.updated_at).getTime() <
-              new Date(latestRoomStateUpdatedAt).getTime()
-          ) {
-            return
-          }
-
-          latestRoomStateUpdatedAt = freshState?.updated_at ?? latestRoomStateUpdatedAt
-
-          currentSnapshot = {
-            ...currentSnapshot,
-            room,
-            state: freshState,
-          }
-
-          emitSnapshot()
-        } catch (error) {
-          callbacks.onError?.(
-            error instanceof Error
-              ? error
-              : new Error("No se pudo actualizar el estado del juego")
-          )
-        }
-      }
-    )
-
-    .subscribe((status: string) => {
-      if (status === "CHANNEL_ERROR") {
-        callbacks.onError?.(
-          new Error("Falló la suscripción en tiempo real de la sala")
-        )
-      }
-    })
+  fallbackPollTimer = window.setInterval(() => {
+    void refreshSnapshot()
+  }, 2500)
 
   return () => {
     isActive = false
-    void supabase.removeChannel(channel)
+    clearReconnectTimer()
+    clearFallbackPoll()
+    void cleanupChannel()
   }
 }

@@ -20,13 +20,27 @@ export type RoomPlayer = {
   device_id: string
   is_host: boolean
   joined_at: string
+  last_seen_at?: string | null
+}
+
+export type RoomStatePayload = Record<string, any> & {
+  turnState?: TurnState
+  gameState?: TurnGameState | null
+  difficulty?: "easy" | "medium" | "hard"
+  currentTurn?: number
+  turnStartedAt?: string | null
+  turnExpiresAt?: string | null
+  turnDurationMs?: number
+  lastPlayerScore?: number
+  lastPlayerId?: string
+  gameCompleted?: boolean
 }
 
 export type RoomState = {
   room_id: string
   phase: RoomPhase
   seed: string | null
-  payload: Record<string, any>
+  payload: RoomStatePayload
   updated_at: string
 }
 
@@ -75,8 +89,10 @@ export type JoinRoomResult = {
 }
 
 const ROOM_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
-const DEFAULT_MAX_PLAYERS = 2
+const MIN_PLAYERS_TO_START = 2
+const DEFAULT_MAX_PLAYERS = 5
 const DEFAULT_SELECTED_LEVEL = 1
+const DEFAULT_TURN_DURATION_MS = 30_000
 
 function normalizeRoomCode(code: string): string {
   return code.trim().toUpperCase()
@@ -116,9 +132,9 @@ async function generateUniqueRoomCode(maxAttempts = 10): Promise<string> {
 }
 
 function mergePayload(
-  currentPayload: Record<string, any> = {},
-  incomingPayload: Record<string, any> = {}
-) {
+  currentPayload: RoomStatePayload = {},
+  incomingPayload: RoomStatePayload = {}
+): RoomStatePayload {
   return {
     ...currentPayload,
     ...incomingPayload,
@@ -126,6 +142,20 @@ function mergePayload(
     gameState: incomingPayload.gameState ?? currentPayload.gameState,
     difficulty: incomingPayload.difficulty ?? currentPayload.difficulty,
     currentTurn: incomingPayload.currentTurn ?? currentPayload.currentTurn,
+    turnStartedAt: incomingPayload.turnStartedAt ?? currentPayload.turnStartedAt,
+    turnExpiresAt: incomingPayload.turnExpiresAt ?? currentPayload.turnExpiresAt,
+    turnDurationMs: incomingPayload.turnDurationMs ?? currentPayload.turnDurationMs,
+  }
+}
+
+function buildTurnTiming(turnDurationMs = DEFAULT_TURN_DURATION_MS) {
+  const startedAt = new Date()
+  const expiresAt = new Date(startedAt.getTime() + turnDurationMs)
+
+  return {
+    turnStartedAt: startedAt.toISOString(),
+    turnExpiresAt: expiresAt.toISOString(),
+    turnDurationMs,
   }
 }
 
@@ -137,6 +167,28 @@ async function deleteRoomSafely(roomId: string): Promise<void> {
 
   if (error) {
     console.error("No se pudo limpiar la sala tras un fallo:", error.message)
+  }
+}
+
+async function appendTurnHistory(
+  roomId: string,
+  playerId: string,
+  turnNumber: number,
+  actionType: string,
+  actionPayload: Record<string, unknown>
+): Promise<void> {
+  const { error } = await supabase
+    .from("room_turn_history")
+    .insert({
+      room_id: roomId,
+      player_id: playerId,
+      turn_number: turnNumber,
+      action_type: actionType,
+      action_payload: actionPayload,
+    })
+
+  if (error) {
+    console.warn("No se pudo guardar room_turn_history:", error.message)
   }
 }
 
@@ -248,7 +300,6 @@ export async function createRoom(input: CreateRoomInput): Promise<CreateRoomResu
 
 export async function joinRoomByCode(input: JoinRoomInput): Promise<JoinRoomResult> {
   const normalizedCode = normalizeRoomCode(input.code)
-
   const room = await getRoomByCode(normalizedCode)
 
   if (!room) {
@@ -260,7 +311,6 @@ export async function joinRoomByCode(input: JoinRoomInput): Promise<JoinRoomResu
   }
 
   const currentPlayers = await getRoomPlayers(room.id)
-
   const existingPlayer = currentPlayers.find((player) => player.device_id === input.deviceId)
 
   if (existingPlayer) {
@@ -323,6 +373,13 @@ export async function leaveRoom(roomId: string, deviceId: string): Promise<void>
     return
   }
 
+  await updateRoomState(roomId, {
+    phase: remainingPlayers.length < 2 ? "lobby" : undefined,
+    payload: {
+      gameState: null,
+    },
+  }).catch(() => null)
+
   if (leavingPlayer.is_host) {
     const nextHost = remainingPlayers[0]
 
@@ -375,11 +432,16 @@ export async function startTurnBasedGame(
 ): Promise<RoomState> {
   const players = await getRoomPlayers(roomId)
 
-  if (players.length !== 2) {
-    throw new Error("La partida solo puede iniciar cuando hay exactamente 2 jugadores en la sala")
+  if (players.length < MIN_PLAYERS_TO_START) {
+    throw new Error("La partida solo puede iniciar cuando hay al menos 2 jugadores")
+  }
+
+  if (players.length > DEFAULT_MAX_PLAYERS) {
+    throw new Error(`La partida no puede iniciar con más de ${DEFAULT_MAX_PLAYERS} jugadores`)
   }
 
   const seed = crypto.randomUUID()
+  const timing = buildTurnTiming()
 
   const turnState: TurnState = {
     current_player_index: 0,
@@ -388,17 +450,20 @@ export async function startTurnBasedGame(
     finished_players: [],
   }
 
+  const payload: RoomStatePayload = {
+    difficulty,
+    turnState,
+    currentTurn: 1,
+    gameState: null,
+    ...timing,
+  }
+
   const { data, error } = await supabase
     .from("room_state")
     .update({
       phase: "playing",
       seed,
-      payload: {
-        difficulty,
-        turnState,
-        currentTurn: 1,
-        gameState: null,
-      },
+      payload,
       updated_at: new Date().toISOString(),
     })
     .eq("room_id", roomId)
@@ -413,6 +478,7 @@ export async function startTurnBasedGame(
     .from("game_rooms")
     .update({
       status: "playing",
+      max_players: players.length,
       selected_level: difficulty === "easy" ? 1 : difficulty === "medium" ? 2 : 3,
     })
     .eq("id", roomId)
@@ -420,6 +486,11 @@ export async function startTurnBasedGame(
   if (roomError) {
     throw new Error(`El juego inició, pero no se pudo actualizar la sala: ${roomError.message}`)
   }
+
+  await appendTurnHistory(roomId, players[0].id, 1, "turn_started", {
+    difficulty,
+    current_player_index: 0,
+  })
 
   return data
 }
@@ -432,6 +503,12 @@ export async function syncTurnGameState(
 
   if (!roomState) {
     throw new Error("No existe el estado de la sala")
+  }
+
+  const currentTurnState = roomState.payload?.turnState as TurnState | undefined
+
+  if (currentTurnState?.current_player_id && currentTurnState.current_player_id !== gameState.activePlayerId) {
+    throw new Error("No es el turno del jugador activo")
   }
 
   const nextPayload = mergePayload(roomState.payload ?? {}, {
@@ -476,6 +553,10 @@ export async function finishPlayerTurn(
     throw new Error("No existe el estado del turno")
   }
 
+  if (currentTurnState.current_player_id !== playerId) {
+    throw new Error("No es el turno de este jugador")
+  }
+
   const player = players.find((p) => p.id === playerId)
 
   if (!player) {
@@ -492,6 +573,8 @@ export async function finishPlayerTurn(
       ? currentTurnState.finished_players
       : [...currentTurnState.finished_players, playerId],
   }
+
+  const currentTurn = Number(roomState.payload?.currentTurn ?? currentTurnState.current_player_index + 1)
 
   const nextPayload = mergePayload(roomState.payload ?? {}, {
     turnState: updatedTurnState,
@@ -537,6 +620,11 @@ export async function finishPlayerTurn(
     console.error("No se pudo guardar el score en game_scores:", scoreError.message)
   }
 
+  await appendTurnHistory(roomId, playerId, currentTurn, "turn_finished", {
+    score,
+    nickname: player.nickname,
+  })
+
   return data
 }
 
@@ -548,6 +636,10 @@ export async function nextPlayerTurn(roomId: string): Promise<RoomState> {
 
   if (!roomState) {
     throw new Error("No existe el estado de la sala")
+  }
+
+  if (players.length < MIN_PLAYERS_TO_START) {
+    throw new Error("La sala necesita al menos 2 jugadores para continuar")
   }
 
   const currentTurnState = (roomState.payload?.turnState ?? null) as TurnState | null
@@ -562,8 +654,12 @@ export async function nextPlayerTurn(roomId: string): Promise<RoomState> {
     return finishRoomGame(roomId, mergePayload(roomState.payload ?? {}, {
       gameCompleted: true,
       gameState: null,
+      turnStartedAt: null,
+      turnExpiresAt: null,
     }))
   }
+
+  const timing = buildTurnTiming(roomState.payload?.turnDurationMs ?? DEFAULT_TURN_DURATION_MS)
 
   const updatedTurnState: TurnState = {
     ...currentTurnState,
@@ -575,6 +671,7 @@ export async function nextPlayerTurn(roomId: string): Promise<RoomState> {
     turnState: updatedTurnState,
     currentTurn: nextIndex + 1,
     gameState: null,
+    ...timing,
   })
 
   await supabase
@@ -600,6 +697,10 @@ export async function nextPlayerTurn(roomId: string): Promise<RoomState> {
   if (error || !data) {
     throw new Error(`No se pudo avanzar al siguiente turno: ${error?.message ?? "Error desconocido"}`)
   }
+
+  await appendTurnHistory(roomId, players[nextIndex].id, nextIndex + 1, "turn_started", {
+    current_player_index: nextIndex,
+  })
 
   return data
 }
