@@ -3,7 +3,7 @@ import { GameLevel } from "@/types/game-enhanced"
 export const GAME_LEVELS: GameLevel[] = [
   {
     id: 1,
-    name: "Fácil - Campo Abierto",
+    name: "Fácil",
     difficulty: "easy",
     objectCount: 15,
     timeLimit: 30,
@@ -11,7 +11,7 @@ export const GAME_LEVELS: GameLevel[] = [
   },
   {
     id: 2,
-    name: "Medio - Bosque Denso",
+    name: "Medio",
     difficulty: "medium",
     objectCount: 25,
     timeLimit: 25,
@@ -19,7 +19,7 @@ export const GAME_LEVELS: GameLevel[] = [
   },
   {
     id: 3,
-    name: "Difícil - Laberinto",
+    name: "Difícil",
     difficulty: "hard",
     objectCount: 40,
     timeLimit: 20,

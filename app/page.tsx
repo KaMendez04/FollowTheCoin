@@ -32,6 +32,7 @@ export default function Home() {
                 alt="Moneda pixeleada"
                 width={110}
                 height={110}
+                loading="eager"
                 style={{ imageRendering: "pixelated" }}
                 className="drop-shadow-[0_0_25px_rgba(255,215,0,0.35)]"
               />
@@ -73,28 +74,6 @@ export default function Home() {
         )}
       </AnimatePresence>
 
-      {/* Subtle stars in the background */}
-      <div className="fixed inset-0 pointer-events-none">
-        {[...Array(20)].map((_, i) => (
-          <motion.div
-            key={i}
-            className="absolute w-1 h-1 bg-white/20 rounded-full"
-            style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-            }}
-            animate={{
-              opacity: [0.2, 0.8, 0.2],
-              scale: [1, 1.5, 1],
-            }}
-            transition={{
-              duration: 2 + Math.random() * 2,
-              repeat: Infinity,
-              delay: Math.random() * 2,
-            }}
-          />
-        ))}
-      </div>
     </main>
   )
 }

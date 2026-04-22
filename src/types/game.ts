@@ -1,4 +1,4 @@
-export type AvatarType = "Mario" | "Kirby" | "Pikachu" | "Robot" | "Luigi"
+export type AvatarType = "Finn" | "Mage" | "Pikachu" | "Robot" | "AmongUs"
 
 export type Burst = {
   id: number

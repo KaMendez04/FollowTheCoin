@@ -8,8 +8,11 @@ export type GameObject = {
   character?: string
   color?: string
   design?: string
+  emoji?: string
   collected?: boolean
   _size?: number
+  size?: number
+  points?: number
 }
 
 export type GameLevel = {

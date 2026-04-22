@@ -14,83 +14,37 @@ interface EnhancedGameSceneProps {
   onBack: () => void
 }
 
-// ─── Tamaños variados por objeto ────────────────────────────────────────────
-const OBJECT_SIZES: Record<string, number> = {
-  star:       [28, 36, 44, 52][Math.floor(Math.random() * 4)],
-  chest:      [40, 48, 56][Math.floor(Math.random() * 3)],
-  bomb:       [30, 38, 46][Math.floor(Math.random() * 3)],
-  heart:      [28, 36, 44][Math.floor(Math.random() * 3)],
-  mushroom:   [32, 40, 48][Math.floor(Math.random() * 3)],
-  ruby:       [28, 36, 44][Math.floor(Math.random() * 3)],
-  lightning:  [24, 32, 40][Math.floor(Math.random() * 3)],
-  key:        [32, 40, 48][Math.floor(Math.random() * 3)],
-  potion:     [28, 36, 44][Math.floor(Math.random() * 3)],
-  fakecoin:   [32, 40, 48][Math.floor(Math.random() * 3)],
-}
-
+// ─── Size helpers ─────────────────────────────────────────────────────────────
 function randSize(min: number, max: number, step = 8) {
   const steps = Math.floor((max - min) / step)
   return min + Math.floor(Math.random() * (steps + 1)) * step
 }
 
-// ─── Animations per decoy type ──────────────────────────────────────────────
+// ─── Decoy animations ─────────────────────────────────────────────────────────
 function getDecoyAnimation(design: string) {
   switch (design) {
     case "star":
-      return {
-        animate: { rotate: [0, 360], scale: [1, 1.15, 1] },
-        transition: { rotate: { duration: 3 + Math.random() * 2, repeat: Infinity, ease: "linear" as any }, scale: { duration: 1.5, repeat: Infinity, ease: "easeInOut" as any } },
-      }
+      return { animate: { rotate: [0, 360], scale: [1, 1.15, 1] }, transition: { rotate: { duration: 3 + Math.random() * 2, repeat: Infinity, ease: "linear" as const }, scale: { duration: 1.5, repeat: Infinity, ease: "easeInOut" as const } } }
     case "chest":
-      return {
-        animate: { y: [0, -4, 0], rotateZ: [-2, 2, -2] },
-        transition: { duration: 2 + Math.random() * 1.5, repeat: Infinity, ease: "easeInOut" as any },
-      }
+      return { animate: { y: [0, -4, 0], rotateZ: [-2, 2, -2] }, transition: { duration: 2 + Math.random() * 1.5, repeat: Infinity, ease: "easeInOut" as const } }
     case "bomb":
-      return {
-        animate: { scale: [1, 1.08, 1], x: [-1, 1, -1] },
-        transition: { duration: 0.4 + Math.random() * 0.3, repeat: Infinity, ease: "easeInOut" as any },
-      }
+      return { animate: { scale: [1, 1.08, 1], x: [-1, 1, -1] }, transition: { duration: 0.4 + Math.random() * 0.3, repeat: Infinity, ease: "easeInOut" as const } }
     case "heart":
-      return {
-        animate: { scale: [1, 1.2, 1] },
-        transition: { duration: 0.8 + Math.random() * 0.4, repeat: Infinity, ease: "easeInOut" as any },
-      }
+      return { animate: { scale: [1, 1.2, 1] }, transition: { duration: 0.8 + Math.random() * 0.4, repeat: Infinity, ease: "easeInOut" as const } }
     case "mushroom":
-      return {
-        animate: { y: [0, -6, 0], rotateZ: [-3, 3, -3] },
-        transition: { duration: 1.8 + Math.random(), repeat: Infinity, ease: "easeInOut" as any },
-      }
+      return { animate: { y: [0, -6, 0], rotateZ: [-3, 3, -3] }, transition: { duration: 1.8 + Math.random(), repeat: Infinity, ease: "easeInOut" as const } }
     case "ruby":
-      return {
-        animate: { rotateY: [0, 180, 360], scale: [1, 1.1, 1] },
-        transition: { duration: 2.5 + Math.random(), repeat: Infinity, ease: "easeInOut" as any },
-      }
+      return { animate: { rotateY: [0, 180, 360], scale: [1, 1.1, 1] }, transition: { duration: 2.5 + Math.random(), repeat: Infinity, ease: "easeInOut" as const } }
     case "lightning":
-      return {
-        animate: { opacity: [1, 0.4, 1], scale: [1, 1.12, 1], y: [0, -3, 0] },
-        transition: { duration: 0.6 + Math.random() * 0.4, repeat: Infinity, ease: "easeInOut" as any },
-      }
+      return { animate: { opacity: [1, 0.4, 1], scale: [1, 1.12, 1], y: [0, -3, 0] }, transition: { duration: 0.6 + Math.random() * 0.4, repeat: Infinity, ease: "easeInOut" as const } }
     case "key":
-      return {
-        animate: { rotate: [-8, 8, -8], y: [0, -3, 0] },
-        transition: { duration: 2 + Math.random(), repeat: Infinity, ease: "easeInOut" as any },
-      }
+      return { animate: { rotate: [-8, 8, -8], y: [0, -3, 0] }, transition: { duration: 2 + Math.random(), repeat: Infinity, ease: "easeInOut" as const } }
     case "potion":
-      return {
-        animate: { scale: [1, 1.08, 1], rotateZ: [-4, 4, -4] },
-        transition: { duration: 2.2 + Math.random(), repeat: Infinity, ease: "easeInOut" as any },
-      }
+      return { animate: { scale: [1, 1.08, 1], rotateZ: [-4, 4, -4] }, transition: { duration: 2.2 + Math.random(), repeat: Infinity, ease: "easeInOut" as const } }
     case "fakecoin":
-      return {
-        animate: { rotateY: [0, 180, 360] },
-        transition: { duration: 1.8 + Math.random(), repeat: Infinity, ease: "linear" as any },
-      }
+      return { animate: { rotateY: [0, 180, 360] }, transition: { duration: 1.8 + Math.random(), repeat: Infinity, ease: "linear" as const } }
     default:
-      return {
-        animate: { y: [0, -4, 0] },
-        transition: { duration: 2, repeat: Infinity, ease: "easeInOut" as any },
-      }
+      return { animate: { y: [0, -4, 0] }, transition: { duration: 2, repeat: Infinity, ease: "easeInOut" as const } }
   }
 }
 
@@ -98,34 +52,19 @@ function getCharacterAnimation(type: string) {
   switch (type) {
     case "Mario":
     case "Luigi":
-      return {
-        animate: { x: [-3, 3, -3], y: [0, -4, 0] },
-        transition: { duration: 0.9 + Math.random() * 0.4, repeat: Infinity, ease: "easeInOut" as any },
-      }
+      return { animate: { x: [-3, 3, -3], y: [0, -4, 0] }, transition: { duration: 0.9 + Math.random() * 0.4, repeat: Infinity, ease: "easeInOut" as const } }
     case "Kirby":
-      return {
-        animate: { scaleX: [1, 1.1, 1], scaleY: [1, 0.92, 1], y: [0, -5, 0] },
-        transition: { duration: 1.2 + Math.random() * 0.5, repeat: Infinity, ease: "easeInOut" as any },
-      }
+      return { animate: { scaleX: [1, 1.1, 1], scaleY: [1, 0.92, 1], y: [0, -5, 0] }, transition: { duration: 1.2 + Math.random() * 0.5, repeat: Infinity, ease: "easeInOut" as const } }
     case "Pikachu":
-      return {
-        animate: { rotate: [-5, 5, -5], y: [0, -4, 0] },
-        transition: { duration: 0.7 + Math.random() * 0.3, repeat: Infinity, ease: "easeInOut" as any },
-      }
+      return { animate: { rotate: [-5, 5, -5], y: [0, -4, 0] }, transition: { duration: 0.7 + Math.random() * 0.3, repeat: Infinity, ease: "easeInOut" as const } }
     case "Robot":
-      return {
-        animate: { y: [0, -3, 0], rotateZ: [-2, 2, -2] },
-        transition: { duration: 1.5 + Math.random() * 0.5, repeat: Infinity, ease: "easeInOut" as any },
-      }
+      return { animate: { y: [0, -3, 0], rotateZ: [-2, 2, -2] }, transition: { duration: 1.5 + Math.random() * 0.5, repeat: Infinity, ease: "easeInOut" as const } }
     default:
-      return {
-        animate: { y: [0, -5, 0] },
-        transition: { duration: 1.4, repeat: Infinity, ease: "easeInOut" as any },
-      }
+      return { animate: { y: [0, -5, 0] }, transition: { duration: 1.4, repeat: Infinity, ease: "easeInOut" as const } }
   }
 }
 
-// ─── Coin SVG ────────────────────────────────────────────────────────────────
+// ─── SVG Components ────────────────────────────────────────────────────────────
 function CoinSVG({ size }: { size: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 16 16" style={{ imageRendering: "pixelated" }}>
@@ -143,7 +82,6 @@ function CoinSVG({ size }: { size: number }) {
   )
 }
 
-// ─── Decoy SVGs ──────────────────────────────────────────────────────────────
 function StarSVG({ size, color }: { size: number; color: string }) {
   return (
     <svg width={size} height={size} viewBox="0 0 16 16" style={{ imageRendering: "pixelated" }}>
@@ -230,7 +168,6 @@ function MushroomSVG({ size }: { size: number }) {
       <rect x="4" y="10" width="8" height="4" fill="#ffc8a0"/>
       <rect x="5" y="14" width="2" height="1" fill="#ffc8a0"/>
       <rect x="9" y="14" width="2" height="1" fill="#ffc8a0"/>
-      <rect x="6" y="11" width="4" height="1" fill="#cc9900" opacity={0.5}/>
     </svg>
   )
 }
@@ -297,7 +234,6 @@ function PotionSVG({ size }: { size: number }) {
       <rect x="2" y="14" width="8" height="1" fill="#5b21b6"/>
       <rect x="2" y="6" width="3" height="4" fill="#a78bfa" opacity={0.6}/>
       <rect x="1" y="4" width="1" height="1" fill="#c4b5fd" opacity={0.7}/>
-      <rect x="5" y="3" width="2" height="2" fill="#ddd6fe" opacity={0.5}/>
     </svg>
   )
 }
@@ -338,8 +274,8 @@ function FakeCoinSVG({ size, variant }: { size: number; variant: number }) {
   )
 }
 
-// ─── Render decoy by design type ────────────────────────────────────────────
 function DecoyGraphic({ design, color, size }: { design: string; color: string; size: number }) {
+  const v = useMemo(() => Math.floor(Math.random() * 3), [])
   switch (design) {
     case "star": return <StarSVG size={size} color={color} />
     case "chest": return <ChestSVG size={size} />
@@ -350,13 +286,171 @@ function DecoyGraphic({ design, color, size }: { design: string; color: string; 
     case "lightning": return <LightningSVG size={size} />
     case "key": return <KeySVG size={size} />
     case "potion": return <PotionSVG size={size} />
-    case "fakecoin": return <FakeCoinSVG size={size} variant={Math.floor(Math.random() * 3)} />
+    case "fakecoin": return <FakeCoinSVG size={size} variant={v} />
     default: return <StarSVG size={size} color={color} />
   }
 }
 
+// ─── Level Backgrounds ────────────────────────────────────────────────────────
+function LevelBackground({ difficulty }: { difficulty: "easy" | "medium" | "hard" }) {
+  if (difficulty === "easy") {
+    // Campo Abierto - subtle green tones in background
+    return (
+      <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 0 }}>
+        {/* Distant hills */}
+        <svg className="absolute bottom-0 w-full opacity-10" viewBox="0 0 1440 200" preserveAspectRatio="none">
+          <path d="M0,200 C200,80 400,120 720,60 C1040,0 1200,100 1440,80 L1440,200 Z" fill="#22c55e"/>
+        </svg>
+        {/* Small grass tufts pixel style */}
+        {[...Array(12)].map((_, i) => (
+          <div key={i} className="absolute" style={{ left: `${8 + i * 8}%`, bottom: `${5 + (i % 3) * 4}%`, opacity: 0.15 }}>
+            <svg width="12" height="8" viewBox="0 0 12 8" style={{ imageRendering: "pixelated" }}>
+              <rect x="5" y="0" width="2" height="8" fill="#4ade80"/>
+              <rect x="2" y="2" width="2" height="6" fill="#4ade80"/>
+              <rect x="8" y="2" width="2" height="6" fill="#4ade80"/>
+            </svg>
+          </div>
+        ))}
+        {/* Stars/sparkles */}
+        {[...Array(20)].map((_, i) => (
+          <div key={`star-${i}`} className="absolute" style={{ left: `${5 + (i * 4.7) % 92}%`, top: `${3 + (i * 5.3) % 45}%`, opacity: 0.12 }}>
+            <svg width="8" height="8" viewBox="0 0 8 8" style={{ imageRendering: "pixelated" }}>
+              <rect x="3" y="0" width="2" height="8" fill="#fff"/>
+              <rect x="0" y="3" width="8" height="2" fill="#fff"/>
+            </svg>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  if (difficulty === "medium") {
+    // Bosque Denso - dark green trees
+    return (
+      <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 0 }}>
+        {/* Tree silhouettes */}
+        {[...Array(10)].map((_, i) => (
+          <div key={i} className="absolute" style={{ left: `${i * 10.5}%`, bottom: `${3 + (i % 4) * 2}%`, opacity: 0.12 }}>
+            <svg width="40" height="60" viewBox="0 0 20 30" style={{ imageRendering: "pixelated" }}>
+              <rect x="8" y="20" width="4" height="10" fill="#5c3d11"/>
+              <rect x="4" y="12" width="12" height="10" fill="#166534"/>
+              <rect x="6" y="6" width="8" height="8" fill="#15803d"/>
+              <rect x="7" y="1" width="6" height="7" fill="#16a34a"/>
+            </svg>
+          </div>
+        ))}
+        {/* Fog dots */}
+        {[...Array(16)].map((_, i) => (
+          <div key={`fog-${i}`} className="absolute rounded-full" style={{ left: `${(i * 6.3) % 95}%`, top: `${30 + (i * 5.7) % 60}%`, width: 40 + (i % 3) * 20, height: 8, opacity: 0.06, background: "#86efac", borderRadius: 999 }}/>
+        ))}
+        <div className="absolute inset-0" style={{ background: "radial-gradient(ellipse at center, transparent 40%, rgba(0,20,0,0.3) 100%)" }}/>
+      </div>
+    )
+  }
+
+  // Laberinto - pixel wall pattern
+  return (
+    <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 0 }}>
+      {/* Maze wall hints */}
+      {[...Array(8)].map((_, i) => (
+        <div key={i} className="absolute" style={{
+          left: `${(i % 4) * 26}%`,
+          top: `${Math.floor(i / 4) * 45 + 10}%`,
+          opacity: 0.07
+        }}>
+          <svg width="60" height="60" viewBox="0 0 30 30" style={{ imageRendering: "pixelated" }}>
+            <rect x="0" y="0" width="30" height="4" fill="#94a3b8"/>
+            <rect x="0" y="0" width="4" height="30" fill="#94a3b8"/>
+            <rect x="0" y="26" width="20" height="4" fill="#94a3b8"/>
+            <rect x="10" y="10" width="20" height="4" fill="#94a3b8"/>
+            <rect x="10" y="10" width="4" height="20" fill="#94a3b8"/>
+          </svg>
+        </div>
+      ))}
+      <div className="absolute inset-0" style={{ background: "radial-gradient(ellipse at center, transparent 30%, rgba(15,0,30,0.4) 100%)" }}/>
+    </div>
+  )
+}
+
+// ─── Sound Engine ─────────────────────────────────────────────────────────────
+function useGameSounds() {
+  const ctxRef = useRef<AudioContext | null>(null)
+
+  const getCtx = useCallback(() => {
+    if (!ctxRef.current || ctxRef.current.state === "closed") {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext
+      ctxRef.current = new AudioCtx()
+    }
+    return ctxRef.current
+  }, [])
+
+  const beep = useCallback((freq: number, duration: number, type: OscillatorType = "square", vol = 0.06) => {
+    try {
+      const ctx = getCtx()
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.type = type
+      osc.frequency.setValueAtTime(freq, ctx.currentTime)
+      gain.gain.setValueAtTime(0.0001, ctx.currentTime)
+      gain.gain.exponentialRampToValueAtTime(vol, ctx.currentTime + 0.01)
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + duration)
+      osc.connect(gain)
+      gain.connect(ctx.destination)
+      osc.start()
+      osc.stop(ctx.currentTime + duration + 0.02)
+    } catch {}
+  }, [getCtx])
+
+  const playCoin = useCallback(() => {
+    beep(880, 0.05, "square", 0.07)
+    setTimeout(() => beep(1180, 0.06, "square", 0.07), 50)
+    setTimeout(() => beep(1480, 0.08, "triangle", 0.05), 100)
+  }, [beep])
+
+  const playMiss = useCallback(() => {
+    beep(220, 0.08, "sawtooth", 0.05)
+    setTimeout(() => beep(180, 0.1, "sawtooth", 0.04), 70)
+  }, [beep])
+
+  const playStart = useCallback(() => {
+    beep(440, 0.06, "square", 0.06)
+    setTimeout(() => beep(554, 0.06, "square", 0.06), 80)
+    setTimeout(() => beep(659, 0.06, "square", 0.06), 160)
+    setTimeout(() => beep(880, 0.1, "square", 0.07), 240)
+  }, [beep])
+
+  const playEnd = useCallback(() => {
+    beep(659, 0.08, "square", 0.06)
+    setTimeout(() => beep(554, 0.08, "square", 0.06), 90)
+    setTimeout(() => beep(440, 0.08, "square", 0.06), 180)
+    setTimeout(() => beep(330, 0.15, "square", 0.07), 270)
+  }, [beep])
+
+  const playEasterEgg = useCallback(() => {
+    // Fun ascending arpeggio
+    [523, 659, 784, 1047, 1319].forEach((f, i) => {
+      setTimeout(() => beep(f, 0.1, "square", 0.06), i * 70)
+    })
+  }, [beep])
+
+  const playLevelUp = useCallback(() => {
+    beep(523, 0.07, "square", 0.06)
+    setTimeout(() => beep(784, 0.07, "square", 0.06), 80)
+    setTimeout(() => beep(1047, 0.12, "square", 0.07), 160)
+  }, [beep])
+
+  return { playCoin, playMiss, playStart, playEnd, playEasterEgg, playLevelUp }
+}
+
+// ─── Main component ────────────────────────────────────────────────────────────
 export default function EnhancedGameScene({ playerName, selectedAvatar, onBack }: EnhancedGameSceneProps) {
   const containerRef = useRef<HTMLDivElement>(null)
+  const sounds = useGameSounds()
+
+  // Easter egg: 7 fast taps
+  const easterClickTimes = useRef<number[]>([])
+  const [showEasterEgg, setShowEasterEgg] = useState(false)
+
   const [gameState, setGameState] = useState<EnhancedGameState>({
     mode: "menu",
     level: GAME_LEVELS[0],
@@ -372,18 +466,18 @@ export default function EnhancedGameScene({ playerName, selectedAvatar, onBack }
 
   const [coinVisible, setCoinVisible] = useState(true)
   const [mouse, setMouse] = useState({ x: 0, y: 0, active: false })
+  const [bursts, setBursts] = useState<{id: number; x: number; y: number}[]>([])
 
   const floatingParticles = useMemo(
-    () =>
-      [...Array(24)].map((_, i) => ({
-        id: i,
-        left: Math.random() * 100,
-        top: Math.random() * 100,
-        color: ["#e74c3c", "#f1c40f", "#3498db", "#9b59b6", "#2ecc71", "#ffffff"][Math.floor(Math.random() * 6)],
-        duration: 4 + Math.random() * 4,
-        delay: 1 + Math.random() * 4,
-        size: 3 + Math.random() * 4,
-      })),
+    () => [...Array(28)].map((_, i) => ({
+      id: i,
+      left: Math.random() * 100,
+      top: Math.random() * 100,
+      color: ["#e74c3c","#f1c40f","#3498db","#9b59b6","#2ecc71","#ffffff","#ff69b4"][Math.floor(Math.random() * 7)],
+      duration: 4 + Math.random() * 4,
+      delay: 1 + Math.random() * 4,
+      size: 2 + Math.random() * 3,
+    })),
     []
   )
 
@@ -402,7 +496,6 @@ export default function EnhancedGameScene({ playerName, selectedAvatar, onBack }
     (level: GameLevel, coinPos: { x: number; y: number }) => {
       const objects: GameObject[] = []
 
-      // Player character
       objects.push({
         id: "player",
         type: "character",
@@ -412,10 +505,8 @@ export default function EnhancedGameScene({ playerName, selectedAvatar, onBack }
         color: AVATAR_INFO[selectedAvatar].color,
       })
 
-      // Coin
       objects.push({ id: "coin", type: "coin", x: coinPos.x, y: coinPos.y, collected: false })
 
-      // Decoy characters
       const others = CHARACTERS.filter((c) => c.type !== selectedAvatar)
       const decoyCharCount = level.difficulty === "easy" ? 2 : level.difficulty === "medium" ? 3 : 4
       for (let i = 0; i < Math.min(decoyCharCount, others.length); i++) {
@@ -430,21 +521,18 @@ export default function EnhancedGameScene({ playerName, selectedAvatar, onBack }
         })
       }
 
-      // Decoy items — varied count and size per difficulty
       const itemDesigns = ["star","chest","bomb","heart","mushroom","ruby","lightning","key","potion","fakecoin"]
       const itemColors: Record<string, string> = {
         star: ["#facc15","#e74c3c","#3498db","#9b59b6","#2ecc71"][Math.floor(Math.random()*5)],
         chest: "#a05a2c", bomb: "#111", heart: "#e74c3c", mushroom: "#cc0000",
-        ruby: "#cc0044", lightning: "#facc15", key: "#fbbf24", potion: "#7c3aed",
-        fakecoin: "#facc15",
+        ruby: "#cc0044", lightning: "#facc15", key: "#fbbf24", potion: "#7c3aed", fakecoin: "#facc15",
       }
       const remaining = level.objectCount - objects.length
       for (let i = 0; i < remaining; i++) {
         const design = itemDesigns[Math.floor(Math.random() * itemDesigns.length)]
         const size = randSize(
           design === "star" ? 24 : design === "chest" ? 36 : 22,
-          design === "star" ? 56 : design === "chest" ? 60 : 52,
-          8
+          design === "star" ? 56 : design === "chest" ? 60 : 52, 8
         )
         objects.push({
           id: `decoy-${i}`,
@@ -479,11 +567,11 @@ export default function EnhancedGameScene({ playerName, selectedAvatar, onBack }
         gameStartTime: Date.now(),
       })
       setCoinVisible(true)
+      sounds.playStart()
     },
-    [selectedAvatar, playerName, generateGameObjects, generateCoinPosition]
+    [selectedAvatar, playerName, generateGameObjects, generateCoinPosition, sounds]
   )
 
-  // Timer
   useEffect(() => {
     if (gameState.mode !== "playing") return
     const timer = setInterval(() => {
@@ -495,9 +583,14 @@ export default function EnhancedGameScene({ playerName, selectedAvatar, onBack }
     return () => clearInterval(timer)
   }, [gameState.mode])
 
+  useEffect(() => {
+    if (gameState.mode === "finished") {
+      sounds.playEnd()
+    }
+  }, [gameState.mode])
+
   const handleCoinClick = useCallback(() => {
     if (gameState.mode !== "playing") return
-    // Immediately hide coin, then move + show
     setCoinVisible(false)
     const newPos = generateCoinPosition()
     setGameState((prev) => ({
@@ -506,15 +599,39 @@ export default function EnhancedGameScene({ playerName, selectedAvatar, onBack }
       coinsCollected: prev.coinsCollected + 1,
       objects: prev.objects.map((o) => (o.id === "coin" ? { ...o, x: newPos.x, y: newPos.y } : o)),
     }))
+    sounds.playCoin()
     setTimeout(() => setCoinVisible(true), 120)
-  }, [gameState.mode, generateCoinPosition])
+  }, [gameState.mode, generateCoinPosition, sounds])
 
-  const handleDecoyClick = useCallback(() => {
+  const handleDecoyClick = useCallback((e: React.MouseEvent) => {
     if (gameState.mode !== "playing") return
     setGameState((prev) => ({ ...prev, score: Math.max(0, prev.score - 1) }))
-  }, [gameState.mode])
+    sounds.playMiss()
+    // Burst effect
+    const rect = containerRef.current?.getBoundingClientRect()
+    if (rect) {
+      const id = Date.now() + Math.random()
+      setBursts(prev => [...prev, { id, x: e.clientX - rect.left, y: e.clientY - rect.top }])
+      setTimeout(() => setBursts(prev => prev.filter(b => b.id !== id)), 600)
+    }
+  }, [gameState.mode, sounds])
 
-  // ─── Render objects ────────────────────────────────────────────────────────
+  // Easter egg: 7 fast taps (max 400ms between each)
+  const handleContainerClick = useCallback((e: React.MouseEvent) => {
+    const now = Date.now()
+    const times = easterClickTimes.current
+    // Filter only clicks within the last 400ms
+    const recent = times.filter(t => now - t < 400)
+    recent.push(now)
+    easterClickTimes.current = recent
+    if (recent.length >= 7) {
+      easterClickTimes.current = []
+      setShowEasterEgg(true)
+      sounds.playEasterEgg()
+      setTimeout(() => setShowEasterEgg(false), 2000)
+    }
+  }, [sounds])
+
   const renderObject = (object: GameObject) => {
     if (object.type === "coin") {
       const coinSize = gameState.level.difficulty === "hard" ? 36 : gameState.level.difficulty === "medium" ? 44 : 50
@@ -546,7 +663,6 @@ export default function EnhancedGameScene({ playerName, selectedAvatar, onBack }
     if (object.type === "character") {
       const isPlayer = object.id === "player"
       const charAnim = getCharacterAnimation(object.character ?? "")
-      const charSize = gameState.level.difficulty === "hard" ? 38 : 48
       return (
         <motion.div
           key={object.id}
@@ -557,7 +673,7 @@ export default function EnhancedGameScene({ playerName, selectedAvatar, onBack }
             transform: "translate(-50%,-50%)",
             zIndex: isPlayer ? 18 : 15,
             pointerEvents: "none",
-            filter: isPlayer ? `drop-shadow(0 0 5px ${object.color})` : undefined,
+            filter: isPlayer ? `drop-shadow(0 0 6px ${object.color})` : undefined,
           }}
           animate={charAnim.animate}
           transition={charAnim.transition}
@@ -598,22 +714,36 @@ export default function EnhancedGameScene({ playerName, selectedAvatar, onBack }
     return null
   }
 
+  const difficulty = gameState.level.difficulty
+
   return (
     <div
       ref={containerRef}
       onMouseMove={handleMouseMove}
       onMouseLeave={() => setMouse((p) => ({ ...p, active: false }))}
+      onClick={handleContainerClick}
       className="relative min-h-screen overflow-hidden bg-[#050505] px-4 py-6"
       style={{ imageRendering: "pixelated" }}
     >
+      {/* Pixel grid */}
+      <div className="absolute inset-0 z-0 opacity-[0.07] pointer-events-none" style={{
+        backgroundImage: "linear-gradient(to right, #1a1a1a 1px, transparent 1px), linear-gradient(to bottom, #1a1a1a 1px, transparent 1px)",
+        backgroundSize: "4px 4px"
+      }}/>
+      {/* Scanlines */}
+      <div className="absolute inset-0 z-0 pointer-events-none opacity-[0.04]" style={{
+        background: "repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.5) 2px, rgba(0,0,0,0.5) 4px)"
+      }}/>
+      {/* Vignette */}
+      <div className="absolute inset-0 z-0 bg-[radial-gradient(circle_at_center,transparent_30%,rgba(0,0,0,0.55)_100%)] pointer-events-none"/>
+
+      {/* Themed level background */}
+      {gameState.mode === "playing" && <LevelBackground difficulty={difficulty} />}
+
       {/* Ambient pixel crosses */}
       <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 1 }}>
-        {[...Array(16)].map((_, i) => (
-          <div
-            key={i}
-            className="absolute opacity-10"
-            style={{ left: `${6 + (i * 6.1) % 90}%`, top: `${4 + (i * 7.3) % 88}%` }}
-          >
+        {[...Array(18)].map((_, i) => (
+          <div key={i} className="absolute opacity-10" style={{ left: `${5 + (i * 5.3) % 92}%`, top: `${4 + (i * 7.1) % 88}%` }}>
             <svg width="12" height="12" viewBox="0 0 12 12" style={{ imageRendering: "pixelated" }}>
               <rect x="5" y="0" width="2" height="12" fill="#fff"/>
               <rect x="0" y="5" width="12" height="2" fill="#fff"/>
@@ -629,64 +759,79 @@ export default function EnhancedGameScene({ playerName, selectedAvatar, onBack }
             key={p.id}
             className="absolute rounded-full"
             style={{ left: `${p.left}%`, top: `${p.top}%`, width: p.size, height: p.size, background: p.color }}
-            animate={{ y: [0, -18, 0], opacity: [0.2, 0.7, 0.2] }}
+            animate={{ y: [0, -20, 0], opacity: [0.15, 0.65, 0.15] }}
             transition={{ duration: p.duration, repeat: Infinity, delay: p.delay, ease: "easeInOut" }}
           />
         ))}
       </div>
 
-      {/* Mouse trail */}
+      {/* Miss burst */}
+      <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 8 }}>
+        {bursts.map((b) => (
+          <motion.div key={b.id} className="absolute" style={{ left: b.x, top: b.y, width: 0, height: 0 }}>
+            {[...Array(6)].map((_, i) => {
+              const angle = (i / 6) * Math.PI * 2
+              return (
+                <motion.div
+                  key={i}
+                  className="absolute w-2 h-2 rounded-full bg-red-500"
+                  style={{ marginLeft: -4, marginTop: -4 }}
+                  initial={{ x: 0, y: 0, opacity: 1 }}
+                  animate={{ x: Math.cos(angle) * 30, y: Math.sin(angle) * 30, opacity: 0 }}
+                  transition={{ duration: 0.5, ease: "easeOut" }}
+                />
+              )
+            })}
+          </motion.div>
+        ))}
+      </div>
+
+      {/* Easter egg */}
       <AnimatePresence>
-        {mouse.active && (
+        {showEasterEgg && (
           <motion.div
-            className="absolute pointer-events-none"
-            style={{ left: mouse.x - 8, top: mouse.y - 8, width: 16, height: 16, zIndex: 10 }}
-            initial={{ scale: 0, opacity: 0.6 }}
-            animate={{ scale: 1.5, opacity: 0 }}
-            transition={{ duration: 0.4 }}
+            initial={{ opacity: 0, scale: 0.5, y: -10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.7, y: -20 }}
+            className="absolute left-1/2 top-16 z-50 -translate-x-1/2 pointer-events-none"
           >
-            <div className="w-full h-full bg-white/20 rounded-full" />
+            <div className="border-2 border-yellow-400 bg-black/90 px-6 py-3 text-center">
+              <div className="text-yellow-300 font-black text-2xl" style={{ fontFamily: "monospace" }}>★ 1-UP! ★</div>
+              <div className="text-white/70 text-xs mt-1" style={{ fontFamily: "monospace" }}>BONUS ENCONTRADO</div>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
 
       {/* HUD */}
-      <div className="absolute top-3 left-1/2 transform -translate-x-1/2 z-30">
-        <div 
-          className="bg-black/75 backdrop-blur-sm rounded-xl px-5 py-2 border border-white/10 flex items-center gap-5"
-          style={{ imageRendering: "pixelated" }}
-        >
-          <div className="text-center">
-            <div className="text-yellow-400 font-bold text-base" style={{ fontFamily: "monospace" }}>
-              {gameState.coinsCollected}
+      {gameState.mode === "playing" && (
+        <div className="absolute top-3 left-1/2 transform -translate-x-1/2 z-30">
+          <div className="border border-white/20 bg-black/80 backdrop-blur-sm px-5 py-2 flex items-center gap-5"
+            style={{ imageRendering: "pixelated" }}>
+            <div className="text-center">
+              <div className="text-yellow-400 font-black text-base" style={{ fontFamily: "monospace" }}>{gameState.coinsCollected}</div>
+              <div className="text-white/40 text-[10px]" style={{ fontFamily: "monospace" }}>MONEDAS</div>
             </div>
-            <div className="text-white/40 text-[10px]">Monedas</div>
-          </div>
-          <div className="w-px h-6 bg-white/10" />
-          <div className="text-center">
-            <div className="text-white font-bold text-base" style={{ fontFamily: "monospace" }}>
-              {gameState.score}
+            <div className="w-px h-6 bg-white/15"/>
+            <div className="text-center">
+              <div className="text-white font-black text-base" style={{ fontFamily: "monospace" }}>{gameState.score}</div>
+              <div className="text-white/40 text-[10px]" style={{ fontFamily: "monospace" }}>PUNTOS</div>
             </div>
-            <div className="text-white/40 text-[10px]">Puntos</div>
-          </div>
-          <div className="w-px h-6 bg-white/10" />
-          <div className="text-center">
-            <div
-              className={`font-bold text-xl ${gameState.timeLeft <= 10 ? "text-red-400" : "text-white"}`}
-              style={{ fontFamily: "monospace" }}
-            >
-              {gameState.timeLeft}s
+            <div className="w-px h-6 bg-white/15"/>
+            <div className="text-center">
+              <div className={`font-black text-xl ${gameState.timeLeft <= 10 ? "text-red-400" : "text-white"}`} style={{ fontFamily: "monospace" }}>
+                {gameState.timeLeft}s
+              </div>
+              <div className="text-white/40 text-[10px]" style={{ fontFamily: "monospace" }}>TIEMPO</div>
             </div>
-            <div className="text-white/40 text-[10px]">Tiempo</div>
-          </div>
-          <div className="w-px h-6 bg-white/10" />
-          <div className="text-center">
-            <div className="text-white font-bold text-xs" style={{ fontFamily: "monospace" }}>
-              {gameState.level.name}
+            <div className="w-px h-6 bg-white/15"/>
+            <div className="text-center">
+              <div className="text-white/80 font-black text-xs" style={{ fontFamily: "monospace" }}>{gameState.level.name.split(" - ")[0].toUpperCase()}</div>
+              <div className="text-white/40 text-[8px]" style={{ fontFamily: "monospace" }}>{gameState.level.name.split(" - ")[1]?.toUpperCase()}</div>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Game area */}
       <div className="relative w-full h-[calc(100vh-6rem)] max-w-6xl mx-auto" style={{ zIndex: 5 }}>
@@ -695,50 +840,56 @@ export default function EnhancedGameScene({ playerName, selectedAvatar, onBack }
         ))}
       </div>
 
-      {/* Menu */}
+      {/* ── MENU ── */}
       <AnimatePresence>
         {gameState.mode === "menu" && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-black/90 flex flex-col items-center justify-center gap-4 z-40"
-            style={{ imageRendering: "pixelated" }}
+            className="absolute inset-0 flex flex-col items-center justify-center z-40"
+            style={{ background: "rgba(5,5,5,0.92)", imageRendering: "pixelated" }}
           >
             <motion.div
               initial={{ y: -30, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ delay: 0.1 }}
-              className="text-center mb-2"
-              style={{ imageRendering: "pixelated" }}
+              className="text-center mb-8"
             >
-              <h1
-                className="text-4xl md:text-5xl font-black text-white mb-2"
-                style={{ fontFamily: "monospace", textShadow: "3px 3px 0 #2b2f36", imageRendering: "pixelated" }}
-              >
+              <h1 className="text-4xl md:text-5xl font-black text-white mb-2" style={{ fontFamily: "monospace", textShadow: "4px 4px 0 #ca8a04, 2px 2px 0 #78350f" }}>
                 FOLLOW COIN
               </h1>
-              <p className="text-white/60 text-sm" style={{ imageRendering: "pixelated" }}>Toca la moneda dorada · cuidado con los imitadores</p>
-              <p className="text-white/30 text-xs mt-1" style={{ imageRendering: "pixelated" }}>Clic en objeto incorrecto = -1 punto</p>
+              <p className="text-white/60 text-sm" style={{ fontFamily: "monospace" }}>Toca la moneda dorada · cuidado con los imitadores</p>
+              <p className="text-white/30 text-xs mt-1" style={{ fontFamily: "monospace" }}>Clic en objeto incorrecto = -1 punto</p>
             </motion.div>
 
-            <div className="flex flex-col md:flex-row gap-4" style={{ imageRendering: "pixelated" }}>
-              {GAME_LEVELS.map((level, i) => (
-                <motion.button
-                  key={level.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.15 + i * 0.08 }}
-                  whileHover={{ scale: 1.05, y: -3 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => startGame(level)}
-                  className="border-b-4 border-[#ca8a04] bg-[#fde047] px-6 py-4 font-black text-[#1f2937] shadow-lg min-w-[160px]"
-                  style={{ fontFamily: "monospace", imageRendering: "pixelated" }}
-                >
-                  <div className="text-sm font-black" style={{ imageRendering: "pixelated" }}>{level.name}</div>
-                  <div className="text-xs font-normal opacity-70" style={{ imageRendering: "pixelated" }}>{level.timeLimit}s límite</div>
-                </motion.button>
-              ))}
+            <div className="flex flex-col md:flex-row gap-4 mb-8">
+              {GAME_LEVELS.map((level, i) => {
+                const colors = {
+                  easy: { bg: "#16a34a", border: "#15803d", text: "#dcfce7", icon: "🌿" },
+                  medium: { bg: "#b45309", border: "#92400e", text: "#fef3c7", icon: "🌲" },
+                  hard: { bg: "#7c3aed", border: "#5b21b6", text: "#ede9fe", icon: "🔮" },
+                }
+                const c = colors[level.difficulty]
+                return (
+                  <motion.button
+                    key={level.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.15 + i * 0.08 }}
+                    whileHover={{ scale: 1.05, y: -4 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => startGame(level)}
+                    className="border-b-4 px-6 py-4 font-black min-w-[170px] text-left"
+                    style={{ backgroundColor: c.bg, borderColor: c.border, color: c.text, fontFamily: "monospace" }}
+                  >
+                    <div className="text-lg mb-1">{c.icon}</div>
+                    <div className="text-sm font-black">{level.name.split(" - ")[0]}</div>
+                    <div className="text-xs opacity-80 font-normal">{level.name.split(" - ")[1]}</div>
+                    <div className="text-xs opacity-60 mt-1">{level.timeLimit}s · {level.objectCount} objetos</div>
+                  </motion.button>
+                )
+              })}
             </div>
 
             <motion.button
@@ -747,66 +898,63 @@ export default function EnhancedGameScene({ playerName, selectedAvatar, onBack }
               transition={{ delay: 0.5 }}
               whileHover={{ scale: 1.02 }}
               onClick={onBack}
-              className="text-white/40 text-xs mt-4 hover:text-white/70 transition-colors"
-              style={{ fontFamily: "monospace", imageRendering: "pixelated" }}
+              className="text-white/40 text-xs hover:text-white/70 transition-colors border border-white/10 px-4 py-2"
+              style={{ fontFamily: "monospace" }}
             >
-              Volver al menú principal
+              ← VOLVER AL MENÚ PRINCIPAL
             </motion.button>
-        </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
 
-      {/* End screen */}
+      {/* ── END SCREEN ── */}
       <AnimatePresence>
         {gameState.mode === "finished" && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-black/85 backdrop-blur-sm flex items-center justify-center z-40"
-            style={{ imageRendering: "pixelated" }}
+            className="absolute inset-0 flex items-center justify-center z-40"
+            style={{ background: "rgba(5,5,5,0.88)", backdropFilter: "blur(2px)", imageRendering: "pixelated" }}
           >
             <motion.div
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              className="bg-white/5 border border-white/10 rounded-2xl p-8 max-w-sm w-full text-center mx-4"
-              style={{ imageRendering: "pixelated" }}
+              className="border border-white/15 bg-black/60 p-8 max-w-sm w-full text-center mx-4"
             >
-              <h3
-                className="text-3xl font-black text-white mb-3"
-                style={{ fontFamily: "monospace", imageRendering: "pixelated" }}
-              >
-                ¡Tiempo!
+              <div className="text-yellow-400 text-4xl mb-2">⏱</div>
+              <h3 className="text-3xl font-black text-white mb-3" style={{ fontFamily: "monospace", textShadow: "3px 3px 0 #78350f" }}>
+                ¡TIEMPO!
               </h3>
-              <div className="text-2xl text-yellow-400 font-bold mb-1" style={{ fontFamily: "monospace", imageRendering: "pixelated" }}>
-                {gameState.score} pts
+              <div className="text-3xl text-yellow-400 font-black mb-1" style={{ fontFamily: "monospace" }}>
+                {gameState.score} PTS
               </div>
-              <div className="text-white/60 text-sm mb-6" style={{ imageRendering: "pixelated" }}>{gameState.coinsCollected} monedas encontradas</div>
+              <div className="text-white/50 text-sm mb-6" style={{ fontFamily: "monospace" }}>{gameState.coinsCollected} monedas encontradas</div>
 
-              <div className="flex flex-col gap-3" style={{ imageRendering: "pixelated" }}>
+              <div className="flex flex-col gap-3">
                 <motion.button
                   whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
                   onClick={() => startGame(gameState.level)}
-                  className="w-full bg-green-500 text-white font-bold py-3 rounded-lg"
-                  style={{ fontFamily: "monospace", imageRendering: "pixelated" }}
+                  className="w-full border-b-4 border-[#15803d] bg-[#16a34a] text-white font-black py-3"
+                  style={{ fontFamily: "monospace" }}
                 >
-                  Jugar de Nuevo
+                  ▶ JUGAR DE NUEVO
                 </motion.button>
                 <motion.button
                   whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
                   onClick={() => setGameState((p) => ({ ...p, mode: "menu" }))}
-                  className="w-full bg-blue-500 text-white font-bold py-3 rounded-lg"
-                  style={{ fontFamily: "monospace", imageRendering: "pixelated" }}
+                  className="w-full border-b-4 border-[#1d4ed8] bg-[#2563eb] text-white font-black py-3"
+                  style={{ fontFamily: "monospace" }}
                 >
-                  Cambiar Nivel
+                  ◀ CAMBIAR NIVEL
                 </motion.button>
                 <motion.button
                   whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
                   onClick={onBack}
-                  className="w-full bg-red-500/20 text-red-300 font-bold py-2 rounded-lg border border-red-500/30"
-                  style={{ fontFamily: "monospace", imageRendering: "pixelated" }}
+                  className="w-full border border-white/15 text-white/50 font-black py-2 hover:text-white/80 transition-colors"
+                  style={{ fontFamily: "monospace" }}
                 >
-                  Menú Principal
+                  MENÚ PRINCIPAL
                 </motion.button>
               </div>
             </motion.div>
