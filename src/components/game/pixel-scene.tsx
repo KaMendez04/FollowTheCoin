@@ -15,6 +15,7 @@ import { saveRoomScore, getTopScores, type TopScoreEntry } from "@/lib/supabase/
 import { getDeviceId } from "@/lib/game/device"
 import { getLocalRanking, saveLocalScore } from "@/lib/game/local-ranking"
 import RoomLobby from "@/components/room-lobby"
+import { Trophy, Crown, Medal, Coins, Gamepad2 } from "lucide-react"
 
 type PlayMode = "menu" | "solo" | "create-room" | "join-room" | "room-lobby"
 
@@ -664,52 +665,86 @@ const AVATAR_IMAGES: Record<string, string> = {
   AmongUs: "/amongus.png", Robot: "/robot.png", Mage: "/mage.png",
 }
 
-const MEDAL_COLORS = ["#facc15", "#cbd5e1", "#d97706"]
+/** Estilo de cada puesto del podio: color, resplandor e icono. */
+const PODIUM = [
+  { color: "#facc15", glow: "rgba(250,204,21,0.30)", Icon: Crown },
+  { color: "#cbd5e1", glow: "rgba(203,213,225,0.20)", Icon: Medal },
+  { color: "#d97706", glow: "rgba(217,119,6,0.20)", Icon: Medal },
+] as const
 
 function LocalRanking({ entries, className = "" }: { entries: ScoreEntry[], className?: string }) {
   return (
-    <motion.div
+    <motion.section
       initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 1.5, duration: 0.4 }}
-      className={`border border-white/15 bg-black/55 backdrop-blur-[2px] p-3 ${className}`}
+      className={`border border-white/15 bg-black/55 p-3 backdrop-blur-[2px] ${className}`}
+      style={{ fontFamily: "monospace" }}
     >
-      <p className="mb-2 text-center text-[10px] font-black text-white/50" style={{ fontFamily: "monospace" }}>
-        &#x1f3c6; TOP 3 LOCAL
-      </p>
+      <header className="mb-2 flex items-center gap-2">
+        <Trophy aria-hidden className="h-3.5 w-3.5 shrink-0 text-yellow-400" strokeWidth={2.5} />
+        <h2 className="text-[10px] font-black tracking-[0.2em] text-white/70">TOP 3 LOCAL</h2>
+        <span aria-hidden className="h-px flex-1 bg-gradient-to-r from-white/20 to-transparent" />
+      </header>
 
       {entries.length === 0 ? (
-        <p className="py-1 text-center text-[9px] text-white/30" style={{ fontFamily: "monospace" }}>
+        <p className="flex items-center justify-center gap-2 py-3 text-[9px] tracking-wider text-white/30">
+          <Gamepad2 aria-hidden className="h-3.5 w-3.5" strokeWidth={2.5} />
           AÚN NO HAY PARTIDAS — ¡JUEGA UNA!
         </p>
       ) : (
         <ol className="flex flex-col gap-1">
-          {entries.map((entry, i) => (
-            <li
-              key={entry.id}
-              className="flex items-center gap-2 border-l-2 bg-white/5 px-2 py-1"
-              style={{ borderColor: MEDAL_COLORS[i] }}
-            >
-              <span className="w-3 text-center text-[11px] font-black" style={{ fontFamily: "monospace", color: MEDAL_COLORS[i] }}>
-                {i + 1}
-              </span>
-              <span className="h-6 w-6 shrink-0 overflow-hidden border border-white/15 bg-black/40">
-                {AVATAR_IMAGES[entry.avatar] ? (
-                  <img
-                    src={AVATAR_IMAGES[entry.avatar]} alt={entry.avatar}
-                    className="h-full w-full object-cover" style={{ imageRendering: "pixelated" }}
-                  />
-                ) : null}
-              </span>
-              <span className="min-w-0 flex-1 truncate text-[11px] font-black text-white" style={{ fontFamily: "monospace" }} title={entry.name}>
-                {entry.name}
-              </span>
-              <span className="text-[11px] font-black text-yellow-400" style={{ fontFamily: "monospace" }}>
-                {entry.score} PTS
-              </span>
-            </li>
-          ))}
+          {entries.map((entry, i) => {
+            const { color, glow, Icon } = PODIUM[i] ?? PODIUM[PODIUM.length - 1]
+            const isLeader = i === 0
+            return (
+              <li
+                key={entry.id}
+                className="flex items-center gap-2 border-l-2 px-2 py-1.5 transition-colors"
+                style={{
+                  borderColor: color,
+                  backgroundColor: isLeader ? "rgba(250,204,21,0.08)" : "rgba(255,255,255,0.04)",
+                  boxShadow: isLeader ? `inset 0 0 12px ${glow}` : undefined,
+                }}
+              >
+                {/* Puesto: dorso sólido para el líder, contorno para el resto */}
+                <span
+                  className="flex h-5 w-5 shrink-0 items-center justify-center border text-[10px] font-black leading-none"
+                  style={{
+                    borderColor: color,
+                    color: isLeader ? "#000" : color,
+                    backgroundColor: isLeader ? color : "transparent",
+                  }}
+                >
+                  {i + 1}
+                </span>
+
+                <span
+                  className="h-7 w-7 shrink-0 overflow-hidden border bg-black/40"
+                  style={{ borderColor: isLeader ? color : "rgba(255,255,255,0.15)" }}
+                >
+                  {AVATAR_IMAGES[entry.avatar] ? (
+                    <img
+                      src={AVATAR_IMAGES[entry.avatar]} alt={entry.avatar}
+                      className="h-full w-full object-cover" style={{ imageRendering: "pixelated" }}
+                    />
+                  ) : null}
+                </span>
+
+                <span className="min-w-0 flex-1 truncate text-[11px] font-black text-white" title={entry.name}>
+                  {entry.name}
+                </span>
+
+                <Icon aria-hidden className="h-3.5 w-3.5 shrink-0" style={{ color }} strokeWidth={2.5} />
+
+                <span className="flex shrink-0 items-center gap-1 text-[11px] font-black tabular-nums text-yellow-400">
+                  <Coins aria-hidden className="h-3 w-3" strokeWidth={2.5} />
+                  {entry.score}
+                </span>
+              </li>
+            )
+          })}
         </ol>
       )}
-    </motion.div>
+    </motion.section>
   )
 }
 
