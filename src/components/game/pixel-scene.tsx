@@ -13,15 +13,14 @@ import { RoomPlayer, RoomState, TurnState, createRoom, joinRoomByCode, startRoom
 import { subscribeToRoom } from "@/lib/supabase/realtime"
 import { saveRoomScore, getTopScores, type TopScoreEntry } from "@/lib/supabase/scores"
 import { getDeviceId } from "@/lib/game/device"
+import { getLocalRanking, saveLocalScore } from "@/lib/game/local-ranking"
 import RoomLobby from "@/components/room-lobby"
 
 type PlayMode = "menu" | "solo" | "create-room" | "join-room" | "room-lobby"
 
-function sortScores(scores: ScoreEntry[]) {
-  return [...scores].sort((a, b) => {
-    if (a.score !== b.score) return b.score - a.score
-    return b.playedAt - a.playedAt
-  })
+/** Un giro al azar en pasos de 45°: 0, 45, 90 ... 315. */
+function randomAngle45() {
+  return Math.floor(Math.random() * 8) * 45
 }
 
 // ─── Sound helper ─────────────────────────────────────────────────────────────
@@ -88,13 +87,10 @@ export default function PixelScene() {
   const [floatingParticles, setFloatingParticles] = useState<Array<{id: number, left: number, color: string, duration: number, delay: number, size: string}>>([])
 
   useEffect(() => {
-    const savedScores = storage.getItem(GAME_CONFIG.SCORES_KEY)
     const savedPlayerName = storage.getItem(GAME_CONFIG.PLAYER_NAME_KEY)
     const savedAvatar = storage.getItem(GAME_CONFIG.PLAYER_AVATAR_KEY) as AvatarType | null
 
-    if (savedScores) {
-      try { setBestScores(sortScores(JSON.parse(savedScores)).slice(0, 3)) } catch { setBestScores([]) }
-    }
+    setBestScores(getLocalRanking())
     if (savedPlayerName) setPlayerName(savedPlayerName)
     if (savedAvatar && AVATAR_INFO[savedAvatar]) setSelectedAvatar(savedAvatar)
 
@@ -199,11 +195,9 @@ export default function PixelScene() {
 
   function randomCoinPosition() { return { x: 18 + Math.random() * 64, y: 30 + Math.random() * 34 } }
 
-  function saveScore(entry: ScoreEntry) {
-    const updated = sortScores([entry, ...bestScores]).slice(0, 3)
-    setBestScores(updated)
-    storage.setJSON(GAME_CONFIG.SCORES_KEY, updated)
-  }
+  const saveScore = useCallback((finalScore: number) => {
+    setBestScores(saveLocalScore({ name: playerName, avatar: selectedAvatar, score: finalScore }))
+  }, [playerName, selectedAvatar])
 
   async function finishGame() {
     setGameStatus("finished")
@@ -215,7 +209,7 @@ export default function PixelScene() {
         setTopScores(scores)
       } catch {}
     } else {
-      saveScore({ id: `${Date.now()}-${Math.random()}`, name: playerName.trim() || "Invitado", avatar: selectedAvatar, score, playedAt: Date.now() })
+      saveScore(score)
     }
   }
 
@@ -249,7 +243,7 @@ export default function PixelScene() {
     if (recent.length >= 7) {
       easterTimes.current = []
       console.log("Easter egg triggered!")
-      setShowEasterEgg({ x, y, rotation: Math.random() * 30 - 15 }) // random rotation -15 to 15 degrees
+      setShowEasterEgg({ x, y, rotation: randomAngle45() })
       playEasterSound()
       setTimeout(() => setShowEasterEgg(null), 2200)
     }
@@ -375,6 +369,7 @@ async function handlePlayerFinish(score: number) {
         onBack={() => setShowEnhancedGame(false)}
         difficulty={gameMode === "room" ? gameDifficulty : undefined}
         isMultiplayer={false}
+        onGameEnd={saveScore}
       />
     )
   }
@@ -477,7 +472,7 @@ async function handlePlayerFinish(score: number) {
       </div>
 
       {/* Main content */}
-      <div className="relative z-10 mx-auto flex min-h-[calc(100vh-3rem)] w-full max-w-6xl flex-col items-center justify-center gap-6 lg:grid lg:grid-cols-[1fr_300px] lg:items-center lg:gap-8">
+      <div className="relative z-10 mx-auto flex h-screen w-full max-w-6xl flex-col items-center justify-center gap-4 overflow-hidden p-4 lg:grid lg:grid-cols-[1fr_17rem] lg:items-center lg:gap-6">
         <div className="flex w-full flex-col items-center">
           <ArcadeMessage />
           <Instructions />
@@ -486,13 +481,24 @@ async function handlePlayerFinish(score: number) {
 
           <div className="mb-4 w-full max-w-md border border-white/15 bg-black/55 backdrop-blur-[2px] p-4">
             <div className="flex w-full flex-col gap-2">
+              <label htmlFor="player-username" className="text-center text-[10px] font-black text-yellow-300" style={{ fontFamily: "monospace" }}>
+                USERNAME (OBLIGATORIO PARA JUGAR)
+              </label>
               <input
+                id="player-username"
                 value={playerName}
                 onChange={(e) => setPlayerName(e.target.value)}
-                placeholder="Escribe tu nombre"
+                placeholder="Escribe tu username"
+                required
+                aria-required="true"
                 className="h-10 flex-1 border-b-4 border-white/25 bg-black/40 px-4 text-center text-sm text-white outline-none placeholder:text-white/30 font-black focus:border-yellow-400/70 focus:bg-black/55"
                 style={{ fontFamily: "monospace" }}
               />
+              {!playerName.trim() && (
+                <p className="text-center text-[9px] text-white/60" style={{ fontFamily: "monospace" }}>
+                  INGRESA TU USERNAME PARA HABILITAR EL JUEGO
+                </p>
+              )}
             </div>
 
             {/* Game mode buttons */}
@@ -501,10 +507,10 @@ async function handlePlayerFinish(score: number) {
                 whileHover={{ scale: 1.04, y: -1 }} whileTap={{ scale: 0.97 }}
                 onClick={handlePlaySolo}
                 disabled={!playerName.trim()}
-                className="h-10 w-full border-b-4 border-[#ca8a04] bg-[#facc15] px-4 font-black text-xs text-[#1f2937] disabled:opacity-40 disabled:cursor-not-allowed"
+                className="h-7 w-full border-b-2 border-[#ca8a04] bg-[#facc15] px-2 font-black text-[9px] text-[#1f2937] disabled:opacity-40 disabled:cursor-not-allowed"
                 style={{ fontFamily: "monospace" }}
               >
-                ▶ JUGAR SOLO
+                &#x25b6; JUGAR SOLO
               </motion.button>
 
               <div className="flex gap-2">
@@ -512,7 +518,7 @@ async function handlePlayerFinish(score: number) {
                   whileHover={{ scale: 1.04, y: -1 }} whileTap={{ scale: 0.97 }}
                   onClick={handleCreateRoom}
                   disabled={!playerName.trim() || roomLoading}
-                  className="flex-1 h-10 border-b-4 border-[#059669] bg-[#10b981] px-3 font-black text-xs text-white disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="flex-1 h-7 border-b-2 border-[#059669] bg-[#10b981] px-2 font-black text-[9px] text-white disabled:opacity-40 disabled:cursor-not-allowed"
                   style={{ fontFamily: "monospace" }}
                 >
                   {roomLoading ? "..." : "+ SALA"}
@@ -522,7 +528,7 @@ async function handlePlayerFinish(score: number) {
                   whileHover={{ scale: 1.04, y: -1 }} whileTap={{ scale: 0.97 }}
                   onClick={() => setPlayMode("join-room")}
                   disabled={!playerName.trim()}
-                  className="flex-1 h-10 border-b-4 border-[#7c3aed] bg-[#8b5cf6] px-3 font-black text-xs text-white disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="flex-1 h-7 border-b-2 border-[#7c3aed] bg-[#8b5cf6] px-2 font-black text-[9px] text-white disabled:opacity-40 disabled:cursor-not-allowed"
                   style={{ fontFamily: "monospace" }}
                 >
                   UNIRSE
@@ -581,8 +587,8 @@ async function handlePlayerFinish(score: number) {
           </div>
 
           {/* Characters display + coin */}
-          <div className="relative flex min-h-[180px] w-full items-end justify-center">
-            <div className="relative z-10 flex flex-wrap items-end justify-center gap-4 px-4 md:gap-8 lg:gap-12">
+          <div className="relative flex min-h-[120px] w-full items-end justify-center">
+            <div className="relative z-10 flex flex-wrap items-end justify-center gap-3 px-4 md:gap-5 lg:gap-6">
               {CHARACTERS.map((char) => (
                 <CharacterHover
                   key={char.id}
@@ -618,29 +624,32 @@ async function handlePlayerFinish(score: number) {
             />
           </div>
         </div>
+
+        {/* Ranking local (top 3 por jugador): a la derecha en pantallas grandes */}
+        <LocalRanking
+          entries={bestScores}
+          className="w-full max-w-md lg:w-full lg:max-w-none lg:self-center"
+        />
       </div>
 
       {/* Easter egg */}
       <AnimatePresence>
         {showEasterEgg && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.3 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.5 }}
-            className="absolute z-9999 pointer-events-none"
-            style={{
-              left: showEasterEgg.x,
-              top: showEasterEgg.y,
-              transform: `translate(-50%, -50%) rotate(${showEasterEgg.rotation}deg)`,
-            }}
+          <div
+            className="pointer-events-none absolute z-[9999]"
+            style={{ left: showEasterEgg.x, top: showEasterEgg.y, transform: "translate(-50%, -50%)" }}
           >
-            <img
+            <motion.img
+              key={`${showEasterEgg.x}-${showEasterEgg.y}-${showEasterEgg.rotation}`}
               src="/easterEgg.png"
               alt="Easter Egg"
-              className="max-w-xs max-h-xs"
+              className="h-auto w-20 md:w-24"
               style={{ imageRendering: "pixelated" }}
+              initial={{ opacity: 0, scale: 0.3, rotate: showEasterEgg.rotation }}
+              animate={{ opacity: 1, scale: 1, rotate: showEasterEgg.rotation }}
+              exit={{ opacity: 0, scale: 0.5, rotate: showEasterEgg.rotation }}
             />
-          </motion.div>
+          </div>
         )}
       </AnimatePresence>
     </div>
@@ -650,24 +659,78 @@ async function handlePlayerFinish(score: number) {
 // ── Sub-components ─────────────────────────────────────────────────────────────
 
 
-function AvatarSelector({ selected, onSelect, characters }: { selected: AvatarType, onSelect: (a: AvatarType) => void, characters: typeof CHARACTERS }) {
-  const imgs: Record<string, string> = { Kirby: "/kirby.png", Pikachu: "/pikachu.png", Finn: "/fin.png", AmongUs: "/amongus.png", Robot: "/robot.png", Mage: "/mage.png" }
+const AVATAR_IMAGES: Record<string, string> = {
+  Kirby: "/kirby.png", Pikachu: "/pikachu.png", Finn: "/fin.png",
+  AmongUs: "/amongus.png", Robot: "/robot.png", Mage: "/mage.png",
+}
+
+const MEDAL_COLORS = ["#facc15", "#cbd5e1", "#d97706"]
+
+function LocalRanking({ entries, className = "" }: { entries: ScoreEntry[], className?: string }) {
   return (
-    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.3, duration: 0.4 }} className="mb-3">
-      <p className="text-xs text-white/50 text-center mb-2 font-black" style={{ fontFamily: "monospace" }}>SELECCIONA TU AVATAR</p>
-      <div className="flex items-center justify-center gap-2">
+    <motion.div
+      initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 1.5, duration: 0.4 }}
+      className={`border border-white/15 bg-black/55 backdrop-blur-[2px] p-3 ${className}`}
+    >
+      <p className="mb-2 text-center text-[10px] font-black text-white/50" style={{ fontFamily: "monospace" }}>
+        &#x1f3c6; TOP 3 LOCAL
+      </p>
+
+      {entries.length === 0 ? (
+        <p className="py-1 text-center text-[9px] text-white/30" style={{ fontFamily: "monospace" }}>
+          AÚN NO HAY PARTIDAS — ¡JUEGA UNA!
+        </p>
+      ) : (
+        <ol className="flex flex-col gap-1">
+          {entries.map((entry, i) => (
+            <li
+              key={entry.id}
+              className="flex items-center gap-2 border-l-2 bg-white/5 px-2 py-1"
+              style={{ borderColor: MEDAL_COLORS[i] }}
+            >
+              <span className="w-3 text-center text-[11px] font-black" style={{ fontFamily: "monospace", color: MEDAL_COLORS[i] }}>
+                {i + 1}
+              </span>
+              <span className="h-6 w-6 shrink-0 overflow-hidden border border-white/15 bg-black/40">
+                {AVATAR_IMAGES[entry.avatar] ? (
+                  <img
+                    src={AVATAR_IMAGES[entry.avatar]} alt={entry.avatar}
+                    className="h-full w-full object-cover" style={{ imageRendering: "pixelated" }}
+                  />
+                ) : null}
+              </span>
+              <span className="min-w-0 flex-1 truncate text-[11px] font-black text-white" style={{ fontFamily: "monospace" }} title={entry.name}>
+                {entry.name}
+              </span>
+              <span className="text-[11px] font-black text-yellow-400" style={{ fontFamily: "monospace" }}>
+                {entry.score} PTS
+              </span>
+            </li>
+          ))}
+        </ol>
+      )}
+    </motion.div>
+  )
+}
+
+function AvatarSelector({ selected, onSelect, characters }: { selected: AvatarType, onSelect: (a: AvatarType) => void, characters: typeof CHARACTERS }) {
+  const imgs = AVATAR_IMAGES
+  return (
+    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.3, duration: 0.4 }} className="mb-2">
+      <p className="text-[10px] text-white/50 text-center mb-1 font-black" style={{ fontFamily: "monospace" }}>SELECCIONA TU AVATAR</p>
+      <div className="flex items-center justify-center gap-1">
         {characters.map((char) => {
           const at = char.type as AvatarType
           const isSelected = selected === at
           return (
             <motion.button key={char.id} onClick={() => onSelect(at)}
               whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }}
-              className={`relative w-12 h-12 md:w-14 md:h-14 border-2 flex items-center justify-center overflow-hidden transition-all ${
-                isSelected ? "border-yellow-400 bg-yellow-400/10 shadow-[0_0_12px_rgba(250,204,21,0.4)]" : "border-white/15 bg-white/5 hover:border-white/30"
+              className={`relative w-10 h-10 md:w-11 md:h-11 border-2 flex items-center justify-center overflow-hidden transition-all ${
+                isSelected ? "border-yellow-400 bg-yellow-400/10 shadow-[0_0_8px_rgba(250,204,21,0.4)]" : "border-white/15 bg-white/5 hover:border-white/30"
               }`}
               title={AVATAR_INFO[at]?.label || char.type}
             >
-              <div className="w-10 h-10 md:w-12 md:h-12 relative">
+              <div className="w-8 h-8 md:w-9 md:h-9 relative">
                 {imgs[char.type] ? (
                   <img src={imgs[char.type]} alt={char.type} className="w-full h-full object-cover" style={{ imageRendering: "pixelated" }}/>
                 ) : (
@@ -675,8 +738,8 @@ function AvatarSelector({ selected, onSelect, characters }: { selected: AvatarTy
                 )}
               </div>
               {isSelected && (
-                <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-yellow-400 flex items-center justify-center border-2 border-black">
-                  <svg className="w-3 h-3 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-yellow-400 flex items-center justify-center border-2 border-black">
+                  <svg className="w-2.5 h-2.5 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7"/>
                   </svg>
                 </div>

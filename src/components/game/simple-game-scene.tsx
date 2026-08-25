@@ -14,6 +14,8 @@ interface SimpleGameSceneProps {
   onBack: () => void
   difficulty?: "easy" | "medium" | "hard"
   isMultiplayer?: boolean
+  /** Se llama una vez al terminar la partida, con la puntuación final. */
+  onGameEnd?: (score: number) => void
 }
 
 // ─── SVG pixel art components (idénticos al multiplayer) ───────────────────
@@ -235,8 +237,10 @@ export default function SimpleGameScene({
   onBack,
   difficulty,
   isMultiplayer = false,
+  onGameEnd,
 }: SimpleGameSceneProps) {
   const containerRef = useRef<HTMLDivElement>(null)
+  const scoreReported = useRef(false)
 
   const [gameState, setGameState] = useState<{
     mode: "menu" | "playing" | "finished"
@@ -350,6 +354,17 @@ export default function SimpleGameScene({
       coinsCollected: 0,
     })
   }, [])
+
+  // Reporta la puntuación final una sola vez por partida
+  useEffect(() => {
+    if (gameState.mode !== "finished") {
+      scoreReported.current = false
+      return
+    }
+    if (scoreReported.current) return
+    scoreReported.current = true
+    onGameEnd?.(gameState.score)
+  }, [gameState.mode, gameState.score, onGameEnd])
 
   // Auto-start en modo multijugador
   useEffect(() => {
